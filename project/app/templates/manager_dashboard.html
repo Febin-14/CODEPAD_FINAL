@@ -1,0 +1,1483 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manager Dashboard</title>
+    <link rel="stylesheet" href="{{ url_for('static', path='style.css') }}?v=2">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="{{ url_for('static', path='chat.js') }}"></script>
+    <!-- Monaco Editor Loader -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.36.1/min/vs/loader.min.js"></script>
+    <script src="{{ url_for('static', path='theme.js') }}"></script>
+</head>
+
+<body>
+    <div class="app-wrapper">
+
+    <header class="top-bar">
+            <div class="header-container">
+                <h1 class="brand-title">CodePad</h1>
+                <div class="profile-section">
+                    <a href="/developer_analytics" class="nav-link">Developer Analytics</a>
+                    <span class="greeting">Hello, <strong>{{ username }}</strong></span>
+                    <div class="avatar-circle">{{ username[0].upper() }}</div>
+                    
+                    <a href="/logout" class="logout-link">Logout</a>
+                    
+                    <button id="theme-toggle" class="theme-toggle" aria-label="Toggle Theme" title="Toggle Theme" style="background:none; border:none; cursor:pointer; display:flex; align-items:center; justify-content:center; padding: 6px; margin-left: 8px; border-radius: 50%; transition: background 0.2s;">
+                        <img src="/static/moon.png" id="theme-icon" alt="Theme Toggle" style="width:20px;height:20px;transition:transform 0.3s;filter:invert(0.8);">
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <main class="main-content">
+            <div class="layout-grid">
+                <div class="creation-row"
+                    style="display: grid; grid-template-columns: 1fr 1.6fr; gap: 24px; margin-bottom: 32px;">
+                    <!-- Project Creation Panel -->
+                    <section class="panel creation-panel"
+                        style="margin-bottom: 0; background: linear-gradient(180deg, rgba(255,255,255,0.02), transparent);">
+                        <div class="panel-header"
+                            style="padding: 20px 24px; border-bottom: 1px solid var(--border-subtle);">
+                            <div style="display: flex; align-items: center; gap: 12px;">
+                                <div
+                                    style="width: 4px; height: 24px; background: linear-gradient(135deg, var(--accent-1), var(--accent-2)); border-radius: 2px;">
+                                </div>
+                                <div>
+                                    <h2 class="section-title" style="font-size: 1.3rem; margin-bottom: 4px;">New Project
+                                    </h2>
+                                    <p class="section-description" style="font-size: 0.9rem;">Create a new workspace for
+                                        your team</p>
+                                </div>
+                            </div>
+                        </div>
+                        <form action="/add_project" method="post" class="creation-form" style="padding: 24px;">
+                            <div class="input-group">
+                                <label for="project-title" class="input-label">Project Title</label>
+                                <input type="text" id="project-title" name="title" class="text-input"
+                                    placeholder="e.g. Website Redesign" required>
+                            </div>
+
+                            <div class="input-group">
+                                <label for="project-desc" class="input-label">Description (Optional)</label>
+                                <textarea id="project-desc" name="description" class="textarea-input"
+                                    placeholder="Brief physical description or goal of the project."
+                                    rows="2"></textarea>
+                            </div>
+
+                            <div class="input-group">
+                                <label class="input-label">Assign Developers</label>
+                                <div class="assign-toggle-wrap">
+                                    <button type="button" class="assign-toggle-btn active" data-mode="manual"
+                                        onclick="setAssignMode('manual')">👤 Manual</button>
+                                    <button type="button" class="assign-toggle-btn" data-mode="ai"
+                                        onclick="setAssignMode('ai')">🤖 AI Auto-Assign</button>
+                                </div>
+                                <input type="hidden" id="assignModeInput" name="assign_mode" value="manual">
+                                <div class="dev-selection-container" id="create-project-devs">
+                                    <div class="dev-role-group">
+                                        <div class="role-title">Frontend Developers</div>
+                                        <div class="dev-grid">
+                                            {% for dev in developers if 'frontend' in dev.role.lower() %}
+                                            <div class="dev-card" data-username="{{ dev.username }}"
+                                                onclick="toggleDevSelection(this, 'create')">
+                                                <div class="status-icon"></div>
+                                                <div class="dev-avatar">{{ dev.username[0].upper() }}</div>
+                                                <div class="dev-name">{{ dev.username }}</div>
+                                                <div class="dev-role-sub">Frontend</div>
+                                            </div>
+                                            {% endfor %}
+                                        </div>
+                                    </div>
+                                    <div class="dev-role-group">
+                                        <div class="role-title">Backend Developers</div>
+                                        <div class="dev-grid">
+                                            {% for dev in developers if 'backend' in dev.role.lower() %}
+                                            <div class="dev-card" data-username="{{ dev.username }}"
+                                                onclick="toggleDevSelection(this, 'create')">
+                                                <div class="status-icon"></div>
+                                                <div class="dev-avatar">{{ dev.username[0].upper() }}</div>
+                                                <div class="dev-name">{{ dev.username }}</div>
+                                                <div class="dev-role-sub">Backend</div>
+                                            </div>
+                                            {% endfor %}
+                                        </div>
+                                    </div>
+                                </div>
+                                <div id="aiAssignMessage" class="ai-assign-msg" style="display: none;">
+                                    <div class="ai-assign-icon">🤖</div>
+                                    <div class="ai-assign-text">AI will automatically assign the best-suited developers
+                                        based on their skills and availability.</div>
+                                </div>
+                                <!-- Hidden select to actually submit data -->
+                                <select name="assigned_developers" id="create-project-select-hidden" multiple
+                                    style="display:none;" required>
+                                    {% for dev in developers %}
+                                    <option value="{{ dev.username }}">{{ dev.username }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+
+                            <button type="submit" class="submit-button"
+                                style="margin-top: 20px; background: linear-gradient(135deg, var(--accent-1), var(--accent-2)); padding: 12px 24px; border-radius: 8px; font-weight: 600; box-shadow: 0 4px 12px rgba(14,165,233,0.3);">
+                                Create Project
+                            </button>
+                        </form>
+                    </section>
+
+                    <!-- Projects Overview Panel -->
+                    <section class="panel overview-panel"
+                        style="margin-bottom: 0; background: linear-gradient(180deg, rgba(255,255,255,0.02), transparent);">
+                        <div class="panel-header"
+                            style="padding: 20px 24px; border-bottom: 1px solid var(--border-subtle);">
+                            <div style="display: flex; align-items: center; gap: 12px;">
+                                <div
+                                    style="width: 4px; height: 24px; background: linear-gradient(135deg, var(--accent-1), var(--accent-2)); border-radius: 2px;">
+                                </div>
+                                <div>
+                                    <h2 class="section-title" style="font-size: 1.3rem; margin-bottom: 4px;">Projects
+                                        Overview</h2>
+                                    <p class="section-description" style="font-size: 0.9rem;">Manage your active
+                                        projects and teams</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="table-wrapper">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Project Title</th>
+                                        <th>Description</th>
+                                        <th style="cursor: pointer; user-select: none;" onclick="toggleDevColumn()">
+                                            Assigned Developers
+                                            <span id="devColToggle"
+                                                style="font-size: 0.75rem; margin-left: 6px; opacity: 0.6;">👁</span>
+                                        </th>
+                                        <th>Status</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for project in projects %}
+                                    <tr>
+                                        <td style="font-weight: 600; cursor: pointer;"
+                                            onclick="window.location.href='/projects/{{ project._id }}'">
+                                            {{ project.title }}
+                                        </td>
+                                        <td class="description-cell" style="cursor: pointer;"
+                                            onclick="window.location.href='/projects/{{ project._id }}'">
+                                            {{ project.description or "—" }}
+                                        </td>
+                                        <td>
+                                            <div class="dev-col-content">
+                                                {% for dev in project.assigned_developers %}
+                                                <span class="category-badge"
+                                                    style="background: rgba(14, 165, 233, 0.1); color: var(--accent-1); margin-right: 4px; margin-bottom: 4px; display: inline-block;">
+                                                    {{ dev }}
+                                                </span>
+                                                {% endfor %}
+                                            </div>
+                                            <span class="dev-col-hidden"
+                                                style="display: none; color: var(--text-muted); font-size: 0.8rem;">{{
+                                                project.assigned_developers|length }} dev(s)</span>
+                                        </td>
+                                        <td>
+                                            <span class="status-indicator status-{{ project.status or 'active' }}">
+                                                {{ (project.status or 'active')|capitalize }}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <div style="display: flex; gap: 8px; align-items: center;">
+                                                <button type="button" class="view-code-btn"
+                                                    data-target="{{ project._id }}" data-title="{{ project.title }}"
+                                                    data-desc="{{ project.description or '' }}"
+                                                    data-devs='{{ project.assigned_developers | tojson }}'
+                                                    onclick='openEditProjectModal(this.dataset.target, this.dataset.title, this.dataset.desc, JSON.parse(this.dataset.devs || "[]"))'
+                                                    title="Edit Project">
+                                                    Edit
+                                                </button>
+                                                <form action="/api/delete_project/{{ project._id }}" method="post"
+                                                    onsubmit="return confirm('WARNING: Are you sure you want to delete this project? ALL tasks inside this project will also be PERMANENTLY deleted.');"
+                                                    style="margin: 0; display: inline-block;">
+                                                    <button type="submit" class="delete-btn" title="Delete Project">
+                                                        &times;
+                                                    </button>
+                                                </form>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </section>
+                </div>
+
+            </div>
+        </main>
+
+        <!-- Live Code View Modal -->
+        <div id="liveCodeModal" class="modal">
+            <div class="modal-content live-modal-content">
+                <div class="modal-header">
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <span class="live-indicator" id="liveIndicator">🔴</span>
+                        <h3 id="liveModalTaskTitle">Live Code View</h3>
+                        <span class="live-status-badge" id="liveStatusBadge">LIVE</span>
+                    </div>
+                    <span class="close-modal" onclick="closeLiveCodeModal()">&times;</span>
+                </div>
+                <div class="modal-body" style="padding: 0;">
+                    <!-- Container for Monaco Editor (Live View) -->
+                    <div id="live-monaco-editor-container" style="width: 100%; height: 600px;"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Code View Modal -->
+        <div id="codeModal" class="modal">
+            ...
+        </div>
+
+        <!-- Edit Project Modal -->
+        <div id="editProjectModal" class="modal">
+            <div class="modal-content" style="max-width: 500px; background-color: var(--bg-card);">
+                <div class="modal-header">
+                    <h3>Edit Project</h3>
+                    <span class="close-modal" onclick="closeEditProjectModal()">&times;</span>
+                </div>
+                <div class="modal-body" style="padding: 24px;">
+                    <form id="editProjectForm" method="post" action="">
+                        <div class="input-group">
+                            <label class="input-label">Project Title</label>
+                            <input type="text" name="title" id="editProjectTitle" class="text-input" required>
+                        </div>
+                        <div class="input-group">
+                            <label class="input-label">Description</label>
+                            <textarea name="description" id="editProjectDesc" class="textarea-input"
+                                rows="3"></textarea>
+                        </div>
+                        <div class="input-group">
+                            <label class="input-label">Assign Developers</label>
+                            <div class="dev-selection-container" id="edit-project-devs">
+                                <div class="dev-role-group">
+                                    <div class="role-title">Frontend Developers</div>
+                                    <div class="dev-grid">
+                                        {% for dev in developers if 'frontend' in dev.role.lower() %}
+                                        <div class="dev-card" data-username="{{ dev.username }}"
+                                            onclick="toggleDevSelection(this, 'edit')">
+                                            <div class="status-icon"></div>
+                                            <div class="dev-avatar">{{ dev.username[0].upper() }}</div>
+                                            <div class="dev-name">{{ dev.username }}</div>
+                                            <div class="dev-role-sub">Frontend</div>
+                                        </div>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                                <div class="dev-role-group">
+                                    <div class="role-title">Backend Developers</div>
+                                    <div class="dev-grid">
+                                        {% for dev in developers if 'backend' in dev.role.lower() %}
+                                        <div class="dev-card" data-username="{{ dev.username }}"
+                                            onclick="toggleDevSelection(this, 'edit')">
+                                            <div class="status-icon"></div>
+                                            <div class="dev-avatar">{{ dev.username[0].upper() }}</div>
+                                            <div class="dev-name">{{ dev.username }}</div>
+                                            <div class="dev-role-sub">Backend</div>
+                                        </div>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                            </div>
+                            <!-- Hidden select to actually submit data -->
+                            <select name="assigned_developers" id="edit-project-select-hidden" multiple
+                                style="display:none;" required>
+                                {% for dev in developers %}
+                                <option value="{{ dev.username }}">{{ dev.username }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="review-actions" style="margin-top: 24px;">
+                            <button type="submit" class="approve-btn">Save Changes</button>
+                            <button type="button" class="reject-btn" onclick="closeEditProjectModal()">Cancel</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Edit Task Modal -->
+        <div id="editTaskModal" class="modal">
+            <div class="modal-content" style="max-width: 500px; background-color: var(--bg-card);">
+                <div class="modal-header">
+                    <h3>Edit Task</h3>
+                    <span class="close-modal" onclick="closeEditTaskModal()">&times;</span>
+                </div>
+                <div class="modal-body" style="padding: 24px;">
+                    <form id="editTaskForm" method="post" action="">
+                        <div class="input-group">
+                            <label class="input-label">Task Title</label>
+                            <input type="text" name="title" id="editTaskTitle" class="text-input" required>
+                        </div>
+                        <div class="input-group">
+                            <label class="input-label">Description</label>
+                            <textarea name="description" id="editTaskDesc" class="textarea-input" rows="3"></textarea>
+                        </div>
+                        <div class="input-group">
+                            <label class="input-label">Project</label>
+                            <select name="project_id" id="editTaskProject" class="select-input" required>
+                                {% for project in projects %}
+                                <option value="{{ project._id }}">{{ project.title }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="review-actions" style="margin-top: 24px;">
+                            <button type="submit" class="approve-btn">Save Changes</button>
+                            <button type="button" class="reject-btn" onclick="closeEditTaskModal()">Cancel</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <style>
+            .modal {
+                display: none;
+                position: fixed;
+                z-index: 1000;
+                left: 0;
+                top: 0;
+                width: 100%;
+                height: 100%;
+                overflow: auto;
+                background-color: rgba(0, 0, 0, 0.5);
+            }
+
+            /* Updated modal styles for dark theme editor */
+            .modal-content {
+                background-color: #1e1e1e;
+                margin: 5% auto;
+                padding: 0;
+                border: 1px solid #444;
+                width: 90%;
+                max-width: 1000px;
+                border-radius: 8px;
+                box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+                overflow: hidden;
+                display: flex;
+                flex-direction: column;
+            }
+
+            .modal-header {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                padding: 15px 20px;
+                background-color: #252526;
+                border-bottom: 1px solid #333;
+                color: #cccccc;
+            }
+
+            .modal-body {
+                padding: 0;
+                background-color: #1e1e1e;
+                flex-grow: 1;
+            }
+
+            .close-modal {
+                color: #aaa;
+                font-size: 28px;
+                font-weight: bold;
+                cursor: pointer;
+            }
+
+            .close-modal:hover {
+                color: white;
+            }
+
+            .view-code-btn {
+                background-color: #4f46e5;
+                color: white;
+                border: none;
+                padding: 6px 12px;
+                border-radius: 4px;
+                cursor: pointer;
+                font-size: 0.85rem;
+                transition: background 0.2s;
+            }
+
+            .view-code-btn:hover {
+                background-color: #4338ca;
+            }
+
+            .download-code-btn {
+                background-color: #10b981;
+                color: white;
+                border: none;
+                padding: 6px 12px;
+                border-radius: 4px;
+                cursor: pointer;
+                font-size: 0.85rem;
+                transition: background 0.2s;
+            }
+
+            .download-code-btn:hover {
+                background-color: #059669;
+            }
+
+            .modal-review-section {
+                padding: 20px;
+                background-color: #252526;
+                border-top: 1px solid #333;
+            }
+
+            .review-header {
+                color: #cccccc;
+                font-size: 1rem;
+                font-weight: 600;
+                margin-bottom: 12px;
+            }
+
+            .review-comments-input {
+                width: 100%;
+                min-height: 100px;
+                padding: 12px;
+                border: 1px solid #444;
+                border-radius: 4px;
+                background-color: #1e1e1e;
+                color: #cccccc;
+                font-size: 0.9rem;
+                font-family: 'Courier New', monospace;
+                resize: vertical;
+                box-sizing: border-box;
+            }
+
+            .review-comments-input:focus {
+                outline: none;
+                border-color: #4f46e5;
+            }
+
+            .review-actions {
+                display: flex;
+                gap: 12px;
+                margin-top: 24px;
+                justify-content: flex-end;
+                align-items: center;
+            }
+
+            .approve-btn {
+                background: linear-gradient(135deg, #10b981, #059669);
+                color: white;
+                border: none;
+                padding: 12px 24px;
+                border-radius: 8px;
+                cursor: pointer;
+                font-size: 0.9rem;
+                font-weight: 600;
+                transition: all 0.2s;
+                box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+            }
+
+            .approve-btn:hover {
+                background: linear-gradient(135deg, #059669, #047857);
+                transform: translateY(-1px);
+                box-shadow: 0 6px 16px rgba(16, 185, 129, 0.4);
+            }
+
+            .reject-btn {
+                background: linear-gradient(135deg, #ef4444, #dc2626);
+                color: white;
+                border: none;
+                padding: 12px 24px;
+                border-radius: 8px;
+                cursor: pointer;
+                font-size: 0.9rem;
+                font-weight: 600;
+                transition: all 0.2s;
+                box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+            }
+
+            .reject-btn:hover {
+                background: linear-gradient(135deg, #dc2626, #b91c1c);
+                transform: translateY(-1px);
+                box-shadow: 0 6px 16px rgba(239, 68, 68, 0.4);
+            }
+
+            .status-indicator.status-submitted {
+                background: rgba(59, 130, 246, 0.1);
+                color: #3b82f6;
+            }
+
+            .status-indicator.status-done {
+                background: rgba(16, 185, 129, 0.1);
+                color: #10b981;
+            }
+
+            .live-view-btn {
+                background-color: #ef4444;
+                color: white;
+                border: none;
+                padding: 6px 12px;
+                border-radius: 4px;
+                cursor: pointer;
+                font-size: 0.85rem;
+                transition: background 0.2s;
+                animation: pulse 2s infinite;
+            }
+
+            .live-view-btn:hover {
+                background-color: #dc2626;
+            }
+
+            @keyframes pulse {
+
+                0%,
+                100% {
+                    opacity: 1;
+                }
+
+                50% {
+                    opacity: 0.7;
+                }
+            }
+
+            .live-modal-content {
+                max-width: 1200px;
+                width: 95%;
+            }
+
+            .live-indicator {
+                font-size: 1.2rem;
+                animation: blink 1s infinite;
+            }
+
+            @keyframes blink {
+
+                0%,
+                100% {
+                    opacity: 1;
+                }
+
+                50% {
+                    opacity: 0.3;
+                }
+            }
+
+            .live-status-badge {
+                background-color: #ef4444;
+                color: white;
+                padding: 4px 8px;
+                border-radius: 4px;
+                font-size: 0.75rem;
+                font-weight: 600;
+                letter-spacing: 0.5px;
+            }
+
+            .live-status-badge.ended {
+                background-color: #6b7280;
+            }
+
+            .live-indicator.ended {
+                opacity: 0.5;
+                animation: none;
+            }
+
+            /* New Developer Selection UI Styles */
+            .dev-selection-container {
+                display: flex;
+                flex-direction: column;
+                gap: 16px;
+                margin-top: 8px;
+            }
+
+            .dev-role-group {
+                background: rgba(255, 255, 255, 0.03);
+                border-radius: 8px;
+                padding: 12px;
+                border: 1px solid rgba(255, 255, 255, 0.05);
+            }
+
+            .role-title {
+                font-size: 0.8rem;
+                font-weight: 700;
+                text-transform: uppercase;
+                letter-spacing: 1px;
+                color: var(--accent-1);
+                margin-bottom: 10px;
+                display: flex;
+                align-items: center;
+                gap: 6px;
+            }
+
+            .dev-grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+                gap: 10px;
+            }
+
+            .dev-card {
+                position: relative;
+                background: var(--bg-card);
+                border: 2px solid transparent;
+                border-radius: 8px;
+                padding: 10px;
+                cursor: pointer;
+                transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                text-align: center;
+                user-select: none;
+            }
+
+            .dev-card:hover {
+                transform: translateY(-2px);
+                background: rgba(255, 255, 255, 0.05);
+            }
+
+            .dev-card.selected {
+                background: rgba(14, 165, 233, 0.1);
+                border-color: var(--accent-1);
+            }
+
+            .dev-card .status-icon {
+                position: absolute;
+                top: 6px;
+                right: 6px;
+                width: 18px;
+                height: 18px;
+                border-radius: 50%;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 10px;
+                font-weight: bold;
+                transition: all 0.2s;
+            }
+
+            .dev-card.selected .status-icon {
+                background: var(--accent-1);
+                color: white;
+            }
+
+            .dev-card.selected .status-icon::before {
+                content: "✓";
+            }
+
+            .dev-card:not(.selected) .status-icon {
+                background: rgba(255, 255, 255, 0.1);
+                color: rgba(255, 255, 255, 0.3);
+            }
+
+            .dev-card:not(.selected) .status-icon::before {
+                content: "×";
+            }
+
+            .dev-name {
+                font-weight: 600;
+                font-size: 0.9rem;
+                color: var(--text-primary);
+                margin-top: 4px;
+            }
+
+            .dev-role-sub {
+                font-size: 0.75rem;
+                color: var(--text-muted);
+            }
+
+            .dev-avatar {
+                width: 32px;
+                height: 32px;
+                background: var(--accent-1);
+                color: white;
+                border-radius: 50%;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-weight: bold;
+                margin-bottom: 6px;
+                font-size: 0.8rem;
+            }
+
+            /* Assign Mode Toggle */
+            .assign-toggle-wrap {
+                display: flex;
+                gap: 0;
+                margin-bottom: 14px;
+                background: rgba(255, 255, 255, 0.04);
+                border-radius: 8px;
+                padding: 3px;
+                border: 1px solid var(--border-subtle);
+            }
+
+            .assign-toggle-btn {
+                flex: 1;
+                padding: 8px 16px;
+                border: none;
+                background: transparent;
+                color: var(--text-muted);
+                font-size: 0.85rem;
+                font-weight: 600;
+                cursor: pointer;
+                border-radius: 6px;
+                transition: all 0.2s ease;
+            }
+
+            .assign-toggle-btn.active {
+                background: linear-gradient(135deg, #6366f1, #4f46e5);
+                color: #fff;
+                box-shadow: 0 2px 8px rgba(99, 102, 241, 0.3);
+            }
+
+            .assign-toggle-btn:not(.active):hover {
+                color: var(--text-primary);
+                background: rgba(255, 255, 255, 0.05);
+            }
+
+            .ai-assign-msg {
+                display: flex;
+                align-items: center;
+                gap: 14px;
+                padding: 20px;
+                background: rgba(99, 102, 241, 0.06);
+                border: 1px dashed rgba(99, 102, 241, 0.25);
+                border-radius: 10px;
+                margin-top: 4px;
+            }
+
+            .ai-assign-icon {
+                font-size: 2rem;
+                flex-shrink: 0;
+            }
+
+            .ai-assign-text {
+                color: var(--text-secondary);
+                font-size: 0.88rem;
+                line-height: 1.5;
+            }
+        </style>
+
+        <script>
+            // Configure Monaco Editor
+            require.config({ paths: { 'vs': 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.36.1/min/vs' } });
+
+            let editor;
+            let currentReviewTaskId = null;
+            let liveEditor = null;
+            let managerWebSocket = null;
+            let currentLiveTaskId = null;
+
+            let devColumnVisible = true;
+            function toggleDevColumn() {
+                devColumnVisible = !devColumnVisible;
+                document.querySelectorAll('.dev-col-content').forEach(el => {
+                    el.style.display = devColumnVisible ? '' : 'none';
+                });
+                document.querySelectorAll('.dev-col-hidden').forEach(el => {
+                    el.style.display = devColumnVisible ? 'none' : 'inline';
+                });
+                document.getElementById('devColToggle').textContent = devColumnVisible ? '👁' : '👁‍🗨';
+            }
+
+            function setAssignMode(mode) {
+                // Toggle button active states
+                document.querySelectorAll('.assign-toggle-btn').forEach(btn => {
+                    btn.classList.toggle('active', btn.dataset.mode === mode);
+                });
+                // Update hidden input
+                document.getElementById('assignModeInput').value = mode;
+                // Toggle visibility
+                const devContainer = document.getElementById('create-project-devs');
+                const aiMsg = document.getElementById('aiAssignMessage');
+                const hiddenSelect = document.getElementById('create-project-select-hidden');
+                if (mode === 'manual') {
+                    devContainer.style.display = '';
+                    aiMsg.style.display = 'none';
+                    hiddenSelect.required = true;
+                } else {
+                    devContainer.style.display = 'none';
+                    aiMsg.style.display = 'flex';
+                    hiddenSelect.required = false;
+                }
+            }
+
+            function openEditProjectModal(projectId, title, description, assignedDevs) {
+                const form = document.getElementById('editProjectForm');
+                form.action = `/api/edit_project/${projectId}`;
+                document.getElementById('editProjectTitle').value = title;
+                document.getElementById('editProjectDesc').value = description;
+
+                // Sync the interactive developer selection cards
+                const container = document.getElementById('edit-project-devs');
+                const cards = container.querySelectorAll('.dev-card');
+                const hiddenSelect = document.getElementById('edit-project-select-hidden');
+
+                // Clear existing selections in the hidden select
+                for (let i = 0; i < hiddenSelect.options.length; i++) {
+                    hiddenSelect.options[i].selected = false;
+                }
+
+                cards.forEach(card => {
+                    const username = card.dataset.username;
+                    if (assignedDevs.includes(username)) {
+                        card.classList.add('selected');
+                        // Find and select in hidden select
+                        for (let i = 0; i < hiddenSelect.options.length; i++) {
+                            if (hiddenSelect.options[i].value === username) {
+                                hiddenSelect.options[i].selected = true;
+                                break;
+                            }
+                        }
+                    } else {
+                        card.classList.remove('selected');
+                    }
+                });
+
+                document.getElementById('editProjectModal').style.display = 'block';
+            }
+
+            function toggleDevSelection(card, type) {
+                card.classList.toggle('selected');
+                const username = card.dataset.username;
+                const hiddenSelect = document.getElementById(type === 'create' ? 'create-project-select-hidden' : 'edit-project-select-hidden');
+
+                // Find and toggle in hidden select
+                for (let i = 0; i < hiddenSelect.options.length; i++) {
+                    if (hiddenSelect.options[i].value === username) {
+                        hiddenSelect.options[i].selected = card.classList.contains('selected');
+                        break;
+                    }
+                }
+            }
+
+            function closeEditProjectModal() {
+                document.getElementById('editProjectModal').style.display = 'none';
+            }
+
+            function openEditTaskModal(taskId, title, description, projectId) {
+                const form = document.getElementById('editTaskForm');
+                form.action = `/api/edit_task/${taskId}`;
+                document.getElementById('editTaskTitle').value = title;
+                document.getElementById('editTaskDesc').value = description;
+                document.getElementById('editTaskProject').value = projectId;
+
+                document.getElementById('editTaskModal').style.display = 'block';
+            }
+
+            function closeEditTaskModal() {
+                document.getElementById('editTaskModal').style.display = 'none';
+            }
+
+            function filterTasksByProject(projectTitle) {
+                const rows = document.querySelectorAll('.data-table tbody tr[data-project-title]');
+                rows.forEach(row => {
+                    if (projectTitle === 'all' || row.dataset.projectTitle === projectTitle) {
+                        row.style.display = '';
+                    } else {
+                        row.style.display = 'none';
+                    }
+                });
+            }
+
+            function openCodeModal(taskId, title, codeId, taskType) {
+                currentReviewTaskId = taskId;
+                document.getElementById('modalTaskTitle').innerText = 'Code for: ' + title;
+
+                // Get code from textarea value (handles HTML entities correctly)
+                var codeContent = document.getElementById(codeId).value;
+
+                // Check if task status is submitted_for_review to show review section
+                var row = document.querySelector(`tr[data-task-id="${taskId}"]`);
+                var status = row ? (row.dataset.status || '') : '';
+                var showReview = status === 'submitted_for_review';
+                document.getElementById('reviewSection').style.display = showReview ? 'block' : 'none';
+                document.getElementById('reviewComments').value = '';
+
+                document.getElementById('codeModal').style.display = 'block';
+
+                // Determine language based on task type
+                var language = 'python'; // default
+                if (taskType === 'frontend') language = 'html';
+                if (taskType === 'backend') language = 'python';
+
+                if (!editor) {
+                    require(['vs/editor/editor.main'], function () {
+                        editor = monaco.editor.create(document.getElementById('monaco-editor-container'), {
+                            value: codeContent,
+                            language: language,
+                            theme: 'vs-dark',
+                            readOnly: true,
+                            automaticLayout: true,
+                            minimap: { enabled: false },
+                            scrollBeyondLastLine: false,
+                            fontSize: 14
+                        });
+                    });
+                } else {
+                    // Update existing editor instance
+                    var model = editor.getModel();
+                    monaco.editor.setModelLanguage(model, language);
+                    model.setValue(codeContent);
+                    // Layout refresh needed when container becomes visible
+                    setTimeout(() => editor.layout(), 50);
+                }
+            }
+
+            function closeCodeModal() {
+                document.getElementById('codeModal').style.display = 'none';
+                currentReviewTaskId = null;
+            }
+
+            async function approveTask() {
+                if (!currentReviewTaskId) return;
+
+                try {
+                    const res = await fetch('/api/approve_task', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ task_id: currentReviewTaskId })
+                    });
+
+                    const data = await res.json();
+                    if (res.ok) {
+                        alert('Task approved and marked as done!');
+                        closeCodeModal();
+                        window.location.reload();
+                    } else {
+                        alert('Error: ' + (data.detail || 'Failed to approve task'));
+                    }
+                } catch (e) {
+                    console.error(e);
+                    alert('Error approving task');
+                }
+            }
+
+            async function rejectTask() {
+                if (!currentReviewTaskId) return;
+
+                const comments = document.getElementById('reviewComments').value.trim();
+                if (!comments) {
+                    alert('Please provide comments when rejecting a task.');
+                    return;
+                }
+
+                try {
+                    const res = await fetch('/api/reject_task', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ task_id: currentReviewTaskId, comments: comments })
+                    });
+
+                    const data = await res.json();
+                    if (res.ok) {
+                        alert('Task rejected and reassigned to developer with your comments.');
+                        closeCodeModal();
+                        window.location.reload();
+                    } else {
+                        alert('Error: ' + (data.detail || 'Failed to reject task'));
+                    }
+                } catch (e) {
+                    console.error(e);
+                    alert('Error rejecting task');
+                }
+            }
+
+            async function openTaskGitHubUrl(taskId) {
+                try {
+                    const response = await fetch(`/api/task_github_url/${taskId}`);
+                    const data = await response.json().catch(() => ({}));
+                    if (!response.ok) {
+                        alert('Error: ' + (data.detail || 'Code not available on GitHub'));
+                        return;
+                    }
+                    if (data.url) window.open(data.url, '_blank', 'noopener');
+                } catch (e) {
+                    console.error(e);
+                    alert('Error opening GitHub link');
+                }
+            }
+
+            function openLiveCodeView(taskId, title, taskType) {
+                currentLiveTaskId = taskId;
+                document.getElementById('liveModalTaskTitle').innerText = 'Live: ' + title;
+
+                document.getElementById('liveCodeModal').style.display = 'block';
+
+                // Determine language based on task type
+                var language = 'python'; // default
+                if (taskType === 'frontend') language = 'html';
+                if (taskType === 'backend') language = 'python';
+
+                // Initialize Monaco Editor for live view
+                if (!liveEditor) {
+                    require(['vs/editor/editor.main'], function () {
+                        liveEditor = monaco.editor.create(document.getElementById('live-monaco-editor-container'), {
+                            value: '// Connecting to live code view...\n// Waiting for code updates...',
+                            language: language,
+                            theme: 'vs-dark',
+                            readOnly: true,
+                            automaticLayout: true,
+                            minimap: { enabled: false },
+                            scrollBeyondLastLine: false,
+                            fontSize: 14
+                        });
+
+                        // Connect WebSocket for live updates
+                        connectManagerWebSocket(taskId);
+                    });
+                } else {
+                    var model = liveEditor.getModel();
+                    monaco.editor.setModelLanguage(model, language);
+                    model.setValue('// Connecting to live code view...\n// Waiting for code updates...');
+                    connectManagerWebSocket(taskId);
+                    setTimeout(() => liveEditor.layout(), 50);
+                }
+            }
+
+            function closeLiveCodeModal() {
+                document.getElementById('liveCodeModal').style.display = 'none';
+
+                // Close WebSocket connection
+                if (managerWebSocket) {
+                    managerWebSocket.close();
+                    managerWebSocket = null;
+                }
+
+                currentLiveTaskId = null;
+            }
+
+            function updateLiveStatusEnded() {
+                const indicator = document.getElementById('liveIndicator');
+                const badge = document.getElementById('liveStatusBadge');
+                if (indicator && badge) {
+                    indicator.textContent = '⚫';
+                    indicator.className = 'live-indicator ended';
+                    badge.textContent = 'LIVE ENDED';
+                    badge.className = 'live-status-badge ended';
+                }
+            }
+
+            function connectManagerWebSocket(taskId) {
+                // Close existing connection if any
+                if (managerWebSocket) {
+                    managerWebSocket.close();
+                }
+
+                const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+                const wsUrl = `${protocol}//${window.location.host}/ws/manager/${taskId}`;
+
+                managerWebSocket = new WebSocket(wsUrl);
+
+                managerWebSocket.onopen = function () {
+                    console.log('Manager WebSocket connected for live code viewing');
+                    const indicator = document.getElementById('liveIndicator');
+                    const badge = document.getElementById('liveStatusBadge');
+                    if (indicator) {
+                        indicator.textContent = '🔴';
+                        indicator.className = 'live-indicator';
+                    }
+                    if (badge) {
+                        badge.textContent = 'LIVE';
+                        badge.className = 'live-status-badge';
+                    }
+                };
+
+                managerWebSocket.onmessage = function (event) {
+                    const message = JSON.parse(event.data);
+
+                    if (message.type === 'code_update') {
+                        // Update editor with new code
+                        if (liveEditor && liveEditor.getModel()) {
+                            liveEditor.getModel().setValue(message.code || '');
+                        }
+                    } else if (message.type === 'developer_active') {
+                        // Developer is active
+                        console.log('Developer is actively coding');
+                    } else if (message.type === 'developer_disconnected') {
+                        // Developer disconnected - update status to ended
+                        console.log('Developer disconnected');
+                        updateLiveStatusEnded();
+                        if (liveEditor && liveEditor.getModel()) {
+                            const currentValue = liveEditor.getModel().getValue();
+                            if (!currentValue.includes('// Live view ended')) {
+                                liveEditor.getModel().setValue(currentValue + '\n\n// ⚫ Live view ended - Developer stopped or disconnected');
+                            }
+                        }
+                    }
+                };
+
+                managerWebSocket.onerror = function (error) {
+                    console.error('Manager WebSocket error:', error);
+                    updateLiveStatusEnded();
+                    if (liveEditor && liveEditor.getModel()) {
+                        liveEditor.getModel().setValue(liveEditor.getModel().getValue() + '\n\n// Error connecting to live code view. Connection ended.');
+                    }
+                };
+
+                managerWebSocket.onclose = function () {
+                    console.log('Manager WebSocket disconnected');
+                    updateLiveStatusEnded();
+                    if (liveEditor && liveEditor.getModel()) {
+                        const currentValue = liveEditor.getModel().getValue();
+                        // Add comment at the end indicating live view ended
+                        if (!currentValue.includes('// Live view ended')) {
+                            liveEditor.getModel().setValue(currentValue + '\n\n// ⚫ Live view ended - Developer stopped or disconnected');
+                        }
+                    }
+                };
+            }
+
+            window.onclick = function (event) {
+                if (event.target == document.getElementById('codeModal')) {
+                    closeCodeModal();
+                }
+                if (event.target == document.getElementById('liveCodeModal')) {
+                    closeLiveCodeModal();
+                }
+            }
+        </script>
+    </div>
+
+    <!-- Floating Chat Widget (outside app layout so fixed position works) -->
+    <style>
+        #chatWidgetWrap {
+            position: fixed !important;
+            bottom: 24px !important;
+            right: 24px !important;
+            z-index: 9999 !important;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+
+        #chatWidgetWrap .chat-toggle-btn {
+            position: relative;
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #0ea5e9, #0891b2);
+            color: #fff;
+            border: none;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        #chatWidgetWrap .chat-toggle-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(14, 165, 233, 0.35);
+        }
+
+        #chatWidgetWrap .chat-toggle-btn .chat-badge {
+            position: absolute;
+            top: -4px;
+            right: -4px;
+            min-width: 20px;
+            height: 20px;
+            padding: 0 6px;
+            background: #ef4444;
+            color: white;
+            font-size: 0.7rem;
+            font-weight: 600;
+            border-radius: 10px;
+            display: none;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #chatWidgetWrap .chat-toggle-btn.has-badge .chat-badge {
+            display: flex;
+        }
+
+        #chatWidgetWrap .chat-panel {
+            display: none;
+            position: absolute;
+            right: 0;
+            bottom: 64px;
+            width: 380px;
+            max-width: calc(100vw - 48px);
+            height: 480px;
+            max-height: calc(100vh - 120px);
+            background: #fff;
+            border-radius: 12px;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+            border: 1px solid #e2e8f0;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        #chatWidgetWrap.chat-open .chat-panel {
+            display: flex !important;
+        }
+
+        #chatWidgetWrap .chat-panel-header {
+            padding: 12px 16px;
+            background: #f1f5f9;
+            border-bottom: 1px solid #e2e8f0;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        #chatWidgetWrap .chat-panel-title {
+            font-size: 1rem;
+            font-weight: 600;
+            color: #1e293b;
+        }
+
+        #chatWidgetWrap .chat-panel-close {
+            background: none;
+            border: none;
+            color: #64748b;
+            font-size: 1.5rem;
+            cursor: pointer;
+            padding: 0 4px;
+            line-height: 1;
+        }
+
+        #chatWidgetWrap .chat-panel-close:hover {
+            color: #1e293b;
+        }
+
+        #chatWidgetWrap .chat-status {
+            font-size: 0.75rem;
+            color: #64748b;
+            padding: 6px 16px;
+            background: #f1f5f9;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        #chatWidgetWrap .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            background: #f8fafc;
+        }
+
+        #chatWidgetWrap .chat-msg {
+            max-width: 85%;
+            padding: 10px 14px;
+            border-radius: 12px;
+            font-size: 0.875rem;
+            line-height: 1.45;
+            word-break: break-word;
+        }
+
+        #chatWidgetWrap .chat-msg.msg-other {
+            align-self: flex-start;
+            background: #fff;
+            border: 1px solid #e2e8f0;
+            color: #1e293b;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+        }
+
+        #chatWidgetWrap .chat-msg.msg-self {
+            align-self: flex-end;
+            background: linear-gradient(135deg, #0ea5e9, #0891b2);
+            color: #fff;
+        }
+
+        #chatWidgetWrap .chat-msg-sender {
+            font-size: 0.7rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+            margin-bottom: 4px;
+            opacity: 0.9;
+        }
+
+        #chatWidgetWrap .chat-msg.msg-other .chat-msg-sender {
+            color: #0891b2;
+        }
+
+        #chatWidgetWrap .chat-msg.msg-self .chat-msg-sender {
+            color: rgba(255, 255, 255, 0.95);
+        }
+
+        #chatWidgetWrap .chat-msg-time {
+            font-size: 0.7rem;
+            opacity: 0.75;
+            margin-top: 4px;
+        }
+
+        #chatWidgetWrap .chat-input-row {
+            padding: 12px;
+            border-top: 1px solid #e2e8f0;
+            background: #fff;
+            display: flex;
+            gap: 8px;
+            align-items: flex-end;
+        }
+
+        #chatWidgetWrap .chat-input {
+            flex: 1;
+            padding: 10px 14px;
+            border: 1.5px solid #cbd5e1;
+            border-radius: 8px;
+            font-size: 0.875rem;
+            font-family: inherit;
+            resize: none;
+            min-height: 42px;
+            max-height: 100px;
+        }
+
+        #chatWidgetWrap .chat-input:focus {
+            outline: none;
+            border-color: #0ea5e9;
+            box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.1);
+        }
+
+        #chatWidgetWrap .chat-send-btn {
+            padding: 10px 18px;
+            background: linear-gradient(135deg, #0ea5e9, #0891b2);
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            font-size: 0.875rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        #chatWidgetWrap .chat-send-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+
+        #chatWidgetWrap .chat-send-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        #chatWidgetWrap .chat-mode-toggle {
+            display: flex;
+            gap: 0;
+            padding: 6px 12px;
+            background: #f1f5f9;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        #chatWidgetWrap .chat-mode-btn {
+            flex: 1;
+            padding: 8px 12px;
+            border: 1px solid #cbd5e1;
+            background: #fff;
+            color: #64748b;
+            font-size: 0.8rem;
+            font-weight: 600;
+            cursor: pointer;
+            border-radius: 6px;
+            margin: 0 2px;
+            transition: background 0.2s, color 0.2s, border-color 0.2s;
+        }
+
+        #chatWidgetWrap .chat-mode-btn:first-child {
+            margin-left: 0;
+        }
+
+        #chatWidgetWrap .chat-mode-btn:last-child {
+            margin-right: 0;
+        }
+
+        #chatWidgetWrap .chat-mode-btn:hover {
+            background: #e2e8f0;
+            color: #1e293b;
+        }
+
+        #chatWidgetWrap .chat-mode-btn.chat-mode-active {
+            background: linear-gradient(135deg, #0ea5e9, #0891b2);
+            color: #fff;
+            border-color: #0891b2;
+        }
+
+        #chatWidgetWrap .chat-msg-typing .chat-msg-text {
+            font-style: italic;
+            opacity: 0.85;
+        }
+
+        #chatWidgetWrap .chat-voice-wrap {
+            flex-shrink: 0;
+            display: flex;
+            align-items: flex-end;
+        }
+
+        #chatWidgetWrap .chat-voice-btn {
+            width: 42px;
+            height: 42px;
+            min-width: 42px;
+            border-radius: 50%;
+            border: 1.5px solid #cbd5e1;
+            background: #fff;
+            color: #64748b;
+            font-size: 1.2rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.2s, color 0.2s, border-color 0.2s;
+        }
+
+        #chatWidgetWrap .chat-voice-btn:hover {
+            background: #f1f5f9;
+            color: #0ea5e9;
+            border-color: #0ea5e9;
+        }
+
+        #chatWidgetWrap .chat-voice-btn.chat-voice-recording {
+            background: #fee2e2;
+            color: #ef4444;
+            border-color: #ef4444;
+            animation: chat-voice-pulse 1s ease-in-out infinite;
+        }
+
+        @keyframes chat-voice-pulse {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.7;
+            }
+        }
+    </style>
+    <div id="chatWidgetWrap" class="chat-widget-wrap">
+        <button type="button" id="chatToggleBtn" class="chat-toggle-btn" title="Group chat" aria-label="Open chat">
+            <span class="chat-badge" id="chatUnreadBadge">0</span>
+            💬
+        </button>
+        <div class="chat-panel">
+            <div class="chat-panel-header">
+                <span class="chat-panel-title" id="chatPanelTitle">Team Chat</span>
+                <button type="button" id="chatPanelClose" class="chat-panel-close"
+                    aria-label="Close chat">&times;</button>
+            </div>
+            <div class="chat-mode-toggle">
+                <button type="button" id="chatModeTeam" class="chat-mode-btn chat-mode-active">Team</button>
+                <button type="button" id="chatModeAi" class="chat-mode-btn">AI</button>
+            </div>
+            <div class="chat-status" id="chatStatus">Connecting…</div>
+            <div class="chat-messages" id="chatMessages"></div>
+            <div class="chat-input-row">
+                <span id="chatVoiceWrap" class="chat-voice-wrap" style="display: none;">
+                    <button type="button" id="chatVoiceBtn" class="chat-voice-btn" title="Record voice message"
+                        aria-label="Record voice">🎤</button>
+                </span>
+                <textarea id="chatInput" class="chat-input" placeholder="Type a message…" rows="1"></textarea>
+                <button type="button" id="chatSendBtn" class="chat-send-btn">Send</button>
+            </div>
+        </div>
+    </div>
+</body>
+
+</html>

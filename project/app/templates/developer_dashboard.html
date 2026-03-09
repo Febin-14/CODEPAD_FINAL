@@ -1,0 +1,1744 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Developer Dashboard</title>
+    <link rel="stylesheet" href="{{ url_for('static', path='style.css') }}?v=2">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="{{ url_for('static', path='chat.js') }}"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/vs2015.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.45.0/min/vs/loader.js"></script>
+    <script src="{{ url_for('static', path='theme.js') }}"></script>
+</head>
+
+<body>
+    <div class="app-wrapper">
+
+    <header class="top-bar">
+            <div class="header-container">
+                <h1 class="brand-title">CodePad</h1>
+                <div class="profile-section">
+                    <span class="greeting">Hello, <strong>{{ username }}</strong></span>
+                    <div class="avatar-circle">{{ username[0].upper() }}</div>
+                    
+                    <a href="/logout" class="logout-link">Logout</a>
+                    
+                    <button id="theme-toggle" class="theme-toggle" aria-label="Toggle Theme" title="Toggle Theme" style="background:none; border:none; cursor:pointer; display:flex; align-items:center; justify-content:center; padding: 6px; margin-left: 8px; border-radius: 50%; transition: background 0.2s;">
+                        <img src="/static/moon.png" id="theme-icon" alt="Theme Toggle" style="width:20px;height:20px;transition:transform 0.3s;filter:invert(0.8);">
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <main class="main-content">
+            <div class="developer-layout">
+                <!-- My Projects Panel -->
+                <section class="panel projects-panel" style="margin-bottom: 32px;">
+                    <div class="panel-header">
+                        <h2 class="section-title">My Projects</h2>
+                        <p class="section-description">Projects you are currently assigned to</p>
+                    </div>
+
+                    <div class="project-list">
+                        {% for project in projects %}
+                        <div class="project-list-item" onclick="filterTasksByProject('{{ project.title }}', this)">
+                            <div class="project-list-info">
+                                <span class="project-list-name">{{ project.title }}</span>
+                                <span class="project-list-desc">{{ project.description or "No description" }}</span>
+                            </div>
+                            <svg class="project-list-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <polyline points="9 18 15 12 9 6"></polyline>
+                            </svg>
+                        </div>
+                        {% else %}
+                        <div style="color: var(--text-muted); padding: 16px;">You are not assigned to any projects yet.
+                        </div>
+                        {% endfor %}
+                    </div>
+                </section>
+
+                <section class="panel tasks-panel">
+                    <div class="panel-header">
+                        <h2 class="section-title">My Assigned Tasks</h2>
+                        <p class="section-description">Track and manage your current assignments</p>
+                    </div>
+
+                    <div class="table-wrapper">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Task</th>
+                                    <th>Project</th>
+                                    <th>Category</th>
+                                    <th>Description</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for task in tasks %}
+                                <tr class="table-row" data-task-id="{{ task._id }}" data-title="{{ task.title }}"
+                                    data-type="{{ task.type }}" data-description="{{ task.description }}"
+                                    data-status="{{ task.status }}" data-comments="{{ task.comments or '' }}"
+                                    data-project-title="{{ task.project.title if task.project else '' }}">
+                                    <td class="task-title-cell">{{ task.title }}</td>
+                                    <td><span style="font-weight: 500; color: var(--text-primary);">{{
+                                            task.project.title if task.project else "—" }}</span></td>
+                                    <td>
+                                        <span class="category-badge category-{{ task.type }}">
+                                            {{ task.type|capitalize }}
+                                        </span>
+                                    </td>
+                                    <td class="description-cell">{{ task.description or "—" }}</td>
+                                    <td>
+                                        {% if task.status == "new" %}
+                                        <span class="status-indicator status-new">New</span>
+                                        {% elif task.status == "in_progress" %}
+                                        <span class="status-indicator status-progress">In Progress</span>
+                                        {% elif task.status == "submitted_for_review" %}
+                                        <span class="status-indicator status-submitted">Submitted for Review</span>
+                                        {% elif task.status == "paused" %}
+                                        <span class="status-indicator status-paused">Paused</span>
+                                        {% elif task.status == "done" %}
+                                        <span class="status-indicator status-done">Done</span>
+                                        {% else %}
+                                        <span class="status-indicator status-completed">Completed</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+            </div>
+        </main>
+    </div>
+
+    <!-- Modal for task details -->
+    <div id="taskModal"
+        style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(30,41,59,0.25); z-index:999; align-items:center; justify-content:center;">
+        <div class="modal-content modal-large">
+            <button id="closeModalBtn" class="modal-close-btn">&times;</button>
+            <div class="modal-header">
+                <h3 id="modalTaskTitle" class="modal-title"></h3>
+            </div>
+            <div class="modal-body">
+                <div class="modal-section">
+                    <label class="modal-label">Task Title</label>
+                    <div id="modalTaskTitleDetail" class="modal-desc"></div>
+                </div>
+                <div class="modal-section">
+                    <label class="modal-label">Category</label>
+                    <div id="modalTaskTypeDetail" class="modal-desc"></div>
+                </div>
+                <div class="modal-section">
+                    <label class="modal-label">Description</label>
+                    <div id="modalTaskDesc" class="modal-desc"></div>
+                </div>
+                <div class="modal-section">
+                    <label class="modal-label">Status</label>
+                    <span id="modalTaskStatus" class="modal-status"></span>
+                </div>
+                <div id="commentsSection" class="modal-section" style="display:none;">
+                    <label class="modal-label" style="color: #ef4444;">Review Comments</label>
+                    <div id="modalTaskComments" class="modal-comments"
+                        style="background: rgba(239, 68, 68, 0.1); padding: 12px; border-radius: 6px; border-left: 3px solid #ef4444; color: #991b1b; white-space: pre-line; word-break: break-word; margin-top: 8px;">
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="startTaskBtn" class="modal-action-btn" style="display:none;">Start Task</button>
+                <button id="resumeTaskBtn" class="modal-action-btn resume-btn" style="display:none;">▶ Resume
+                    Task</button>
+                <button id="codeTaskBtn" class="modal-action-btn" style="display:none;">Open Code Editor</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Full Page Code Editor -->
+    <div id="codeEditorPage"
+        style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:var(--bg-base); z-index:1000;">
+        <div class="editor-header">
+            <div class="editor-header-content">
+                <div class="editor-task-info">
+                    <h3 id="editorTaskTitle" class="editor-title"></h3>
+                    <span id="editorTaskType" class="editor-badge"></span>
+                </div>
+                <div class="editor-actions">
+                    <button id="aiAssistantBtn" class="editor-ai-btn" onclick="toggleAiPanel()">🤖 AI Assistant</button>
+                    <button id="runPythonBtn" class="editor-run-btn" style="display:none;">▶ Run</button>
+                    <button id="previewHtmlBtn" class="editor-preview-btn" style="display:none;">👁 Preview</button>
+                    <button id="pauseTaskEditorBtn" class="editor-pause-btn" style="display:none;">⏸ Pause</button>
+                    <button id="submitCodeBtn" class="editor-submit-btn">Complete & Submit</button>
+                    <button id="closeEditorBtn" class="editor-close-btn">Close</button>
+                </div>
+            </div>
+        </div>
+        <div style="display: flex; height: calc(100vh - 80px);">
+            <div id="editorMainArea"
+                style="display: flex; flex-direction: column; flex: 1; min-width: 0; transition: flex 0.3s cubic-bezier(.4,0,.2,1);">
+                <div id="monacoContainer" style="flex: 1; min-height: 0; width: 100%;"></div>
+                <div id="runOutputPanel"
+                    style="display: none; border-top: 1px solid var(--primary-200); background: #1e1e1e; color: #d4d4d4; font-family: monospace; font-size: 13px; padding: 12px; max-height: 200px; overflow: auto;">
+                    <div style="font-weight: 600; margin-bottom: 8px; color: #9cdcfe;">Output</div>
+                    <pre id="runOutputContent" style="margin: 0; white-space: pre-wrap; word-break: break-all;"></pre>
+                </div>
+                <div id="previewPanel"
+                    style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 2000; background: #fff;">
+                    <div
+                        style="display: flex; justify-content: space-between; align-items: center; padding: 10px 20px; background: #1e1e2e; border-bottom: 1px solid #333;">
+                        <span style="font-size: 0.9rem; font-weight: 600; color: #9cdcfe;">👁 Live Preview</span>
+                        <button onclick="closePreviewPanel()"
+                            style="background: linear-gradient(135deg, #ef4444, #dc2626); border: none; color: #fff; cursor: pointer; font-size: 0.8rem; padding: 6px 14px; border-radius: 6px; font-weight: 600;">✕
+                            Close Preview</button>
+                    </div>
+                    <iframe id="previewIframe"
+                        style="width: 100%; height: calc(100vh - 45px); border: none; background: #fff;"></iframe>
+                </div>
+            </div>
+
+            <!-- AI Assistant Side Panel -->
+            <div id="aiAssistantPanel" class="ai-panel" style="display: none;">
+                <div class="ai-panel-header">
+                    <span class="ai-panel-title">🤖 AI Assistant</span>
+                    <button class="ai-panel-close" onclick="toggleAiPanel()">&times;</button>
+                </div>
+                <div id="aiMessages" class="ai-messages"></div>
+                <div class="ai-input-area">
+                    <textarea id="aiInput" class="ai-input" placeholder="Ask about your code…" rows="2"></textarea>
+                    <button class="ai-send-btn" onclick="sendAiMessage()">Send</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <style>
+        /* Modal Styles */
+        .modal-content {
+            background: var(--bg-card);
+            border-radius: var(--radius-lg);
+            max-width: 600px;
+            width: 98%;
+            padding: 36px 36px 28px;
+            box-shadow: var(--shadow-card);
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            animation: modalFadeIn 0.2s;
+            border: 1px solid var(--border-subtle);
+        }
+
+        .modal-large {
+            max-width: 700px;
+            min-width: 340px;
+        }
+
+        @media (max-width: 800px) {
+            .modal-content.modal-large {
+                max-width: 98vw;
+                padding: var(--spacing-xl) var(--spacing-md);
+            }
+        }
+
+        @keyframes modalFadeIn {
+            from {
+                transform: translateY(40px) scale(0.98);
+                opacity: 0;
+            }
+
+            to {
+                transform: none;
+                opacity: 1;
+            }
+        }
+
+        .modal-close-btn {
+            position: absolute;
+            top: 18px;
+            right: 24px;
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            color: var(--text-muted);
+            cursor: pointer;
+            transition: color 0.2s;
+        }
+
+        .modal-close-btn:hover {
+            color: var(--text-primary);
+        }
+
+        .modal-header {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-lg);
+            margin-bottom: var(--spacing-md);
+        }
+
+        .modal-title {
+            font-size: 1.35rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin: 0;
+            flex: 1;
+            word-break: break-word;
+        }
+
+        .modal-body {
+            display: flex;
+            flex-direction: column;
+            gap: var(--spacing-lg);
+        }
+
+        .modal-section {
+            margin-bottom: var(--spacing-sm);
+        }
+
+        .modal-label {
+            font-size: 0.95rem;
+            color: var(--text-muted);
+            font-weight: 600;
+            margin-bottom: 4px;
+            display: block;
+            letter-spacing: 0.01em;
+        }
+
+        .modal-desc {
+            color: var(--text-secondary);
+            font-size: 1.05rem;
+            white-space: pre-line;
+            word-break: break-word;
+            padding-left: 2px;
+        }
+
+        .modal-status {
+            font-size: 1rem;
+            font-weight: 600;
+            padding: 4px 14px;
+            border-radius: var(--radius-sm);
+            background: var(--bg-input);
+            color: var(--text-secondary);
+            text-transform: capitalize;
+        }
+
+        .modal-status.status-new {
+            background: rgba(16, 185, 129, 0.1);
+            color: var(--success-500);
+        }
+
+        .modal-status.status-progress {
+            background: rgba(245, 158, 11, 0.1);
+            color: var(--warning-500);
+        }
+
+        .modal-status.status-completed {
+            background: rgba(34, 197, 94, 0.1);
+            color: var(--success-500);
+        }
+
+        .modal-status.status-submitted {
+            background: rgba(59, 130, 246, 0.1);
+            color: #3b82f6;
+        }
+
+        .modal-status.status-done {
+            background: rgba(16, 185, 129, 0.1);
+            color: #10b981;
+        }
+
+        .status-indicator.status-submitted {
+            background: rgba(59, 130, 246, 0.1);
+            color: #3b82f6;
+        }
+
+        .status-indicator.status-done {
+            background: rgba(16, 185, 129, 0.1);
+            color: #10b981;
+        }
+
+        .status-indicator.status-paused {
+            background: rgba(107, 114, 128, 0.1);
+            color: #6b7280;
+        }
+
+        .modal-status.status-paused {
+            background: rgba(107, 114, 128, 0.1);
+            color: #6b7280;
+        }
+
+        .pause-btn {
+            background: linear-gradient(135deg, #f59e0b, #d97706) !important;
+        }
+
+        .pause-btn:hover {
+            box-shadow: var(--shadow-lg);
+            transform: translateY(-2px) scale(1.03);
+        }
+
+        .resume-btn {
+            background: linear-gradient(135deg, #10b981, #059669) !important;
+        }
+
+        .resume-btn:hover {
+            box-shadow: var(--shadow-lg);
+            transform: translateY(-2px) scale(1.03);
+        }
+
+        .modal-footer {
+            display: flex;
+            justify-content: flex-end;
+            margin-top: var(--spacing-md);
+        }
+
+        .modal-action-btn {
+            background: linear-gradient(135deg, var(--accent-1), var(--accent-2));
+            color: #fff;
+            border: none;
+            border-radius: var(--radius-sm);
+            padding: 12px 28px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: box-shadow 0.2s, transform 0.15s;
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+        }
+
+        .modal-action-btn:hover {
+            box-shadow: var(--shadow-lg);
+            transform: translateY(-2px) scale(1.03);
+        }
+
+        /* Full Page Editor Styles */
+        .editor-header {
+            background: var(--bg-elevated);
+            border-bottom: 1px solid var(--border-subtle);
+            padding: 18px 28px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+        }
+
+        .editor-header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .editor-task-info {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-lg);
+        }
+
+        .editor-title {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin: 0;
+        }
+
+        .editor-badge {
+            padding: 4px 14px;
+            border-radius: var(--radius-sm);
+            font-size: 0.85rem;
+            font-weight: 600;
+            background: var(--bg-input);
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+        }
+
+        .editor-badge.category-frontend {
+            background: rgba(139, 92, 246, 0.15);
+            color: #a78bfa;
+        }
+
+        .editor-badge.category-backend {
+            background: rgba(16, 185, 129, 0.12);
+            color: #34d399;
+        }
+
+        .editor-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .editor-submit-btn {
+            background: linear-gradient(135deg, var(--success), #059669);
+            color: #fff;
+            border: none;
+            border-radius: var(--radius-sm);
+            padding: 7px 14px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+        }
+
+        .editor-submit-btn:hover {
+            box-shadow: var(--shadow-lg);
+            transform: translateY(-1px);
+        }
+
+        .editor-close-btn {
+            background: var(--bg-input);
+            color: var(--text-secondary);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-sm);
+            padding: 7px 14px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .editor-close-btn:hover {
+            background: var(--primary-500);
+            transform: translateY(-1px);
+        }
+
+        .editor-pause-btn {
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+            color: #fff;
+            border: none;
+            border-radius: var(--radius-sm);
+            padding: 7px 14px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .editor-pause-btn:hover {
+            box-shadow: var(--shadow-lg);
+            transform: translateY(-1px);
+        }
+
+        .editor-run-btn {
+            background: linear-gradient(135deg, #059669, #047857);
+            color: #fff;
+            border: none;
+            border-radius: var(--radius-sm);
+            padding: 7px 14px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .editor-run-btn:hover {
+            box-shadow: var(--shadow-lg);
+            transform: translateY(-1px);
+        }
+
+        .editor-preview-btn {
+            background: linear-gradient(135deg, #8b5cf6, #7c3aed);
+            color: #fff;
+            border: none;
+            border-radius: var(--radius-sm);
+            padding: 7px 14px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .editor-preview-btn:hover {
+            box-shadow: var(--shadow-lg);
+            transform: translateY(-1px);
+        }
+
+        /* Project List Styles */
+        .project-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0;
+        }
+
+        .project-list-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 14px 18px;
+            border-left: 3px solid transparent;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+            cursor: pointer;
+            transition: background 0.15s, border-color 0.15s;
+        }
+
+        .project-list-item:last-child {
+            border-bottom: none;
+        }
+
+        .project-list-item:hover {
+            background: rgba(255, 255, 255, 0.03);
+            border-left-color: var(--accent-1);
+        }
+
+        .project-list-item.active {
+            background: rgba(14, 165, 233, 0.08);
+            border-left-color: var(--accent-1);
+            border-left-width: 3px;
+        }
+
+        .project-list-item.active .project-list-name {
+            color: var(--accent-1);
+        }
+
+        .project-list-item.active .project-list-arrow {
+            opacity: 1;
+            color: var(--accent-1);
+        }
+
+        .project-list-info {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            min-width: 0;
+        }
+
+        .project-list-name {
+            font-weight: 600;
+            font-size: 0.95rem;
+            color: var(--text-primary);
+            white-space: nowrap;
+        }
+
+        .project-list-desc {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .project-list-arrow {
+            color: var(--text-muted);
+            opacity: 0;
+            transition: opacity 0.15s, transform 0.15s;
+            flex-shrink: 0;
+        }
+
+        .project-list-item:hover .project-list-arrow {
+            opacity: 1;
+            transform: translateX(2px);
+        }
+
+        /* AI Assistant Button */
+        .editor-ai-btn {
+            background: linear-gradient(135deg, #6366f1, #4f46e5);
+            color: #fff;
+            border: none;
+            border-radius: var(--radius-sm);
+            padding: 7px 14px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .editor-ai-btn:hover {
+            box-shadow: 0 0 12px rgba(99, 102, 241, 0.5);
+            transform: translateY(-1px);
+        }
+
+        .editor-ai-btn.active {
+            background: linear-gradient(135deg, #4f46e5, #4338ca);
+            box-shadow: 0 0 12px rgba(99, 102, 241, 0.4);
+        }
+
+        /* AI Side Panel */
+        .ai-panel {
+            width: 400px;
+            min-width: 400px;
+            background: #1e1e2e;
+            border-left: 1px solid rgba(255, 255, 255, 0.08);
+            display: flex;
+            flex-direction: column;
+            animation: aiSlideIn 0.3s cubic-bezier(.4, 0, .2, 1);
+        }
+
+        @keyframes aiSlideIn {
+            from {
+                width: 0;
+                min-width: 0;
+                opacity: 0;
+            }
+
+            to {
+                width: 400px;
+                min-width: 400px;
+                opacity: 1;
+            }
+        }
+
+        .ai-panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 16px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        .ai-panel-title {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .ai-panel-close {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            font-size: 1.3rem;
+            cursor: pointer;
+            padding: 0 4px;
+            line-height: 1;
+        }
+
+        .ai-panel-close:hover {
+            color: var(--text-primary);
+        }
+
+        .ai-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .ai-msg {
+            max-width: 95%;
+            padding: 10px 14px;
+            border-radius: 12px;
+            font-size: 0.85rem;
+            line-height: 1.6;
+            word-break: break-word;
+        }
+
+        .ai-msg-user {
+            align-self: flex-end;
+            background: #4f46e5;
+            color: #fff;
+            border-bottom-right-radius: 4px;
+        }
+
+        .ai-msg-assistant {
+            align-self: flex-start;
+            background: #2a2a3e;
+            color: #e0e0e0;
+            border-bottom-left-radius: 4px;
+        }
+
+        .ai-msg-assistant pre {
+            background: #1a1a2e;
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: 8px;
+            padding: 10px 12px;
+            overflow-x: auto;
+            margin: 8px 0;
+            font-size: 0.82rem;
+            position: relative;
+        }
+
+        .ai-msg-assistant code {
+            font-family: 'Cascadia Code', 'Fira Code', monospace;
+            font-size: 0.82rem;
+        }
+
+        .ai-msg-assistant p {
+            margin: 4px 0;
+        }
+
+        .ai-msg-assistant ul,
+        .ai-msg-assistant ol {
+            padding-left: 18px;
+            margin: 4px 0;
+        }
+
+        .ai-apply-btn {
+            display: inline-block;
+            margin-top: 6px;
+            padding: 4px 10px;
+            background: rgba(99, 102, 241, 0.15);
+            color: #a5b4fc;
+            border: 1px solid rgba(99, 102, 241, 0.3);
+            border-radius: 6px;
+            font-size: 0.75rem;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+
+        .ai-apply-btn:hover {
+            background: rgba(99, 102, 241, 0.3);
+            color: #fff;
+        }
+
+        .ai-msg-typing {
+            align-self: flex-start;
+            background: #2a2a3e;
+            color: #aaa;
+            border-radius: 12px;
+            padding: 10px 14px;
+            font-size: 0.85rem;
+            font-style: italic;
+        }
+
+        .ai-input-area {
+            display: flex;
+            gap: 8px;
+            padding: 12px;
+            border-top: 1px solid rgba(255, 255, 255, 0.06);
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        .ai-input {
+            flex: 1;
+            background: #2a2a3e;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 8px;
+            color: var(--text-primary);
+            padding: 8px 12px;
+            font-size: 0.84rem;
+            resize: none;
+            outline: none;
+            font-family: inherit;
+        }
+
+        .ai-input:focus {
+            border-color: rgba(99, 102, 241, 0.5);
+        }
+
+        .ai-send-btn {
+            background: linear-gradient(135deg, #6366f1, #4f46e5);
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            padding: 8px 16px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            cursor: pointer;
+            align-self: flex-end;
+            transition: all 0.15s;
+        }
+
+        .ai-send-btn:hover {
+            box-shadow: 0 0 10px rgba(99, 102, 241, 0.4);
+        }
+    </style>
+
+    <script>
+        let monacoEditor = null;
+        let currentTaskId = null;
+        let currentTaskType = null;
+        let developerWebSocket = null;
+
+        function showFullPageEditor(taskTitle, taskType, initialCode = '', isReadOnly = false, taskStatus = '') {
+            currentTaskType = taskType;
+            document.getElementById('editorTaskTitle').textContent = taskTitle;
+            const badge = document.getElementById('editorTaskType');
+            badge.textContent = taskType.charAt(0).toUpperCase() + taskType.slice(1);
+            badge.className = 'editor-badge category-' + taskType;
+
+            // Hide submit button if viewing in read-only mode
+            document.getElementById('submitCodeBtn').style.display = isReadOnly ? 'none' : 'block';
+
+            // Show Run button only for backend (Python) tasks
+            const runBtn = document.getElementById('runPythonBtn');
+            // Show Preview button only for frontend (HTML) tasks
+            const previewBtn = document.getElementById('previewHtmlBtn');
+            previewBtn.style.display = (taskType === 'frontend' && !isReadOnly) ? 'inline-block' : 'none';
+            runBtn.style.display = (taskType === 'backend' && !isReadOnly) ? 'inline-block' : 'none';
+
+            // Show pause button only if task is in_progress
+            const pauseBtn = document.getElementById('pauseTaskEditorBtn');
+            if (taskStatus === 'in_progress' && !isReadOnly) {
+                pauseBtn.style.display = 'block';
+            } else {
+                pauseBtn.style.display = 'none';
+            }
+
+            // Hide run output and preview panels when opening editor
+            document.getElementById('runOutputPanel').style.display = 'none';
+            document.getElementById('previewPanel').style.display = 'none';
+
+            document.getElementById('codeEditorPage').style.display = 'block';
+            document.body.style.overflow = 'hidden';
+
+            // Hide the group chat toggle button while the editor is open
+            const chatToggle = document.getElementById('chatToggleBtn');
+            if (chatToggle) {
+                chatToggle.style.display = 'none';
+            }
+
+            require.config({ paths: { 'vs': 'https://cdn.jsdelivr.net/npm/monaco-editor@0.45.0/min/vs' } });
+            require(['vs/editor/editor.main'], function () {
+                if (monacoEditor) monacoEditor.dispose();
+                monacoEditor = monaco.editor.create(document.getElementById('monacoContainer'), {
+                    value: initialCode,
+                    language: taskType === 'frontend' ? 'html' : 'python',
+                    theme: 'vs-dark',
+                    readOnly: isReadOnly,
+                    automaticLayout: true,
+                    fontSize: 14,
+                    lineNumbers: 'on',
+                    wordWrap: 'on',
+                    minimap: { enabled: false }
+                });
+
+                // Connect WebSocket for live code viewing if task is in_progress and not read-only
+                if (taskStatus === 'in_progress' && !isReadOnly && currentTaskId) {
+                    connectDeveloperWebSocket(currentTaskId);
+
+                    // Send code updates when developer types (throttled)
+                    let updateTimeout = null;
+                    monacoEditor.onDidChangeModelContent(function () {
+                        if (developerWebSocket && developerWebSocket.readyState === WebSocket.OPEN) {
+                            // Throttle updates to avoid too many messages
+                            clearTimeout(updateTimeout);
+                            updateTimeout = setTimeout(function () {
+                                const code = monacoEditor.getValue();
+                                developerWebSocket.send(JSON.stringify({
+                                    type: 'code_update',
+                                    code: code
+                                }));
+                            }, 300); // Update every 300ms max
+                        }
+                    });
+                }
+            });
+        }
+
+        function connectDeveloperWebSocket(taskId) {
+            // Close existing connection if any
+            if (developerWebSocket) {
+                developerWebSocket.close();
+            }
+
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsUrl = `${protocol}//${window.location.host}/ws/developer/${taskId}`;
+
+            developerWebSocket = new WebSocket(wsUrl);
+
+            developerWebSocket.onopen = function () {
+                console.log('Developer WebSocket connected for live code viewing');
+            };
+
+            developerWebSocket.onerror = function (error) {
+                console.error('Developer WebSocket error:', error);
+            };
+
+            developerWebSocket.onclose = function () {
+                console.log('Developer WebSocket disconnected');
+            };
+        }
+
+        function closeFullPageEditor() {
+            document.getElementById('codeEditorPage').style.display = 'none';
+            document.body.style.overflow = 'auto';
+
+            // Show the group chat toggle button again when the editor is closed
+            const chatToggle = document.getElementById('chatToggleBtn');
+            if (chatToggle) {
+                chatToggle.style.display = 'flex';
+            }
+
+            // Close AI panel
+            if (aiPanelOpen) {
+                aiPanelOpen = false;
+                document.getElementById('aiAssistantPanel').style.display = 'none';
+                document.getElementById('aiAssistantBtn').classList.remove('active');
+            }
+
+            // Close WebSocket connection
+            if (developerWebSocket) {
+                developerWebSocket.close();
+                developerWebSocket = null;
+            }
+
+            if (monacoEditor) {
+                monacoEditor.dispose();
+                monacoEditor = null;
+            }
+        }
+
+        document.querySelectorAll('.table-row[data-task-id]').forEach(row => {
+            row.addEventListener('click', function () {
+                const title = this.dataset.title;
+                const type = this.dataset.type;
+                const desc = this.dataset.description;
+                const status = this.dataset.status;
+                const taskId = this.dataset.taskId;
+
+                currentTaskId = taskId;
+
+                document.getElementById('modalTaskTitle').textContent = title;
+                document.getElementById('modalTaskTitleDetail').textContent = title;
+                document.getElementById('modalTaskTypeDetail').textContent = type.charAt(0).toUpperCase() + type.slice(1);
+                document.getElementById('modalTaskDesc').textContent = desc;
+                const statusSpan = document.getElementById('modalTaskStatus');
+                let statusText = status.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase());
+                if (status === "submitted_for_review") {
+                    statusText = "Submitted for Review";
+                    statusSpan.className = 'modal-status status-submitted';
+                } else if (status === "paused") {
+                    statusText = "Paused";
+                    statusSpan.className = 'modal-status status-paused';
+                } else if (status === "done") {
+                    statusText = "Done";
+                    statusSpan.className = 'modal-status status-done';
+                } else {
+                    statusSpan.className = 'modal-status status-' + (status === "in_progress" ? "progress" : status);
+                }
+                statusSpan.textContent = statusText;
+
+                const codeBtn = document.getElementById('codeTaskBtn');
+                const startBtn = document.getElementById('startTaskBtn');
+                const resumeBtn = document.getElementById('resumeTaskBtn');
+
+                // Reset buttons and comments
+                codeBtn.style.display = 'none';
+                startBtn.style.display = 'none';
+                resumeBtn.style.display = 'none';
+                codeBtn.textContent = "Open Code Editor";
+                document.getElementById('commentsSection').style.display = 'none';
+
+                if (status === "new") {
+                    startBtn.style.display = "inline-block";
+                    startBtn.onclick = async function () {
+                        await fetch(`/api/start_task/${taskId}`, { method: "POST" });
+                        statusSpan.textContent = "In Progress";
+                        statusSpan.className = 'modal-status status-progress';
+                        startBtn.style.display = "none";
+                        codeBtn.style.display = "inline-block";
+                        // Update row status visually without reload
+                        row.querySelector('.status-indicator').className = 'status-indicator status-progress';
+                        row.querySelector('.status-indicator').textContent = 'In Progress';
+                        row.dataset.status = 'in_progress';
+                    };
+                } else if (status === "in_progress") {
+                    codeBtn.style.display = "inline-block";
+                    // Show comments if task has been reassigned
+                    const comments = this.dataset.comments || '';
+                    if (comments.trim()) {
+                        document.getElementById('commentsSection').style.display = 'block';
+                        document.getElementById('modalTaskComments').textContent = comments;
+                    } else {
+                        document.getElementById('commentsSection').style.display = 'none';
+                    }
+                } else if (status === "paused") {
+                    // Only show resume button for paused tasks, not the code editor button
+                    resumeBtn.style.display = "inline-block";
+                    codeBtn.style.display = "none";
+                    // Show comments if task has been reassigned
+                    const comments = this.dataset.comments || '';
+                    if (comments.trim()) {
+                        document.getElementById('commentsSection').style.display = 'block';
+                        document.getElementById('modalTaskComments').textContent = comments;
+                    } else {
+                        document.getElementById('commentsSection').style.display = 'none';
+                    }
+
+                    resumeBtn.onclick = async function () {
+                        try {
+                            const res = await fetch(`/api/resume_task/${taskId}`, { method: "POST" });
+                            const data = await res.json();
+                            if (res.ok) {
+                                statusSpan.textContent = "In Progress";
+                                statusSpan.className = 'modal-status status-progress';
+                                resumeBtn.style.display = "none";
+                                codeBtn.style.display = "inline-block";
+                                // Update row status visually
+                                row.querySelector('.status-indicator').className = 'status-indicator status-progress';
+                                row.querySelector('.status-indicator').textContent = 'In Progress';
+                                row.dataset.status = 'in_progress';
+                            } else {
+                                alert('Error: ' + (data.detail || 'Failed to resume task'));
+                            }
+                        } catch (e) {
+                            console.error(e);
+                            alert('Error resuming task');
+                        }
+                    };
+                } else if (status === "submitted_for_review") {
+                    codeBtn.textContent = "View Submitted Code";
+                    codeBtn.style.display = "inline-block";
+                    document.getElementById('commentsSection').style.display = 'none';
+                } else if (status === "completed") {
+                    codeBtn.textContent = "View Submitted Code";
+                    codeBtn.style.display = "inline-block";
+                    document.getElementById('commentsSection').style.display = 'none';
+                } else if (status === "done") {
+                    codeBtn.textContent = "View Code";
+                    codeBtn.style.display = "inline-block";
+                    document.getElementById('commentsSection').style.display = 'none';
+                }
+
+                if (status === "done" && !document.getElementById('modalGithubLink')) {
+                    const githubBtn = document.createElement('button');
+                    githubBtn.id = 'modalGithubLink';
+                    githubBtn.className = 'modal-action-btn';
+                    githubBtn.style.background = 'var(--success-500)';
+                    githubBtn.textContent = 'View on GitHub';
+                    githubBtn.onclick = () => openTaskGitHubUrl(taskId);
+                    document.querySelector('.modal-footer').appendChild(githubBtn);
+                } else if (status !== "done" && document.getElementById('modalGithubLink')) {
+                    document.getElementById('modalGithubLink').remove();
+                }
+
+                document.getElementById('taskModal').style.display = "flex";
+            });
+        });
+
+        function filterTasksByProject(projectTitle, clickedEl) {
+            const rows = document.querySelectorAll('.data-table tbody tr[data-project-title]');
+            // Remove active from all project items
+            document.querySelectorAll('.project-list-item').forEach(el => el.classList.remove('active'));
+
+            // If clicking the same project again, deselect (show all)
+            if (clickedEl && clickedEl.classList.contains('was-active')) {
+                document.querySelectorAll('.project-list-item').forEach(el => el.classList.remove('was-active'));
+                rows.forEach(row => row.style.display = '');
+                return;
+            }
+            document.querySelectorAll('.project-list-item').forEach(el => el.classList.remove('was-active'));
+
+            if (clickedEl) {
+                clickedEl.classList.add('active');
+                clickedEl.classList.add('was-active');
+            }
+
+            rows.forEach(row => {
+                if (!projectTitle || projectTitle === 'all' || row.dataset.projectTitle === projectTitle) {
+                    row.style.display = '';
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+        }
+
+        async function openTaskGitHubUrl(taskId) {
+            try {
+                const response = await fetch(`/api/task_github_url/${taskId}`);
+                const data = await response.json().catch(() => ({}));
+                if (!response.ok) {
+                    alert('Error: ' + (data.detail || 'Code not available on GitHub'));
+                    return;
+                }
+                if (data.url) window.open(data.url, '_blank', 'noopener');
+            } catch (e) {
+                console.error(e);
+                alert('Error opening GitHub link');
+            }
+        }
+
+        document.getElementById('codeTaskBtn').onclick = function () {
+            const title = document.getElementById('modalTaskTitle').textContent;
+            const type = document.getElementById('modalTaskTypeDetail').textContent.toLowerCase();
+            const statusText = document.getElementById('modalTaskStatus').textContent.toLowerCase();
+            const isCompleted = statusText.includes('completed') || statusText.includes('submitted') || statusText.includes('done');
+
+            // Get actual status from the clicked row
+            const row = document.querySelector(`tr[data-task-id="${currentTaskId}"]`);
+            const taskStatus = row ? row.dataset.status : '';
+
+            document.getElementById('taskModal').style.display = "none";
+
+            // Fetch existing code if any
+            fetch(`/get_task_code/${currentTaskId}`)
+                .then(res => res.json())
+                .then(data => showFullPageEditor(title, type, data.code || '', isCompleted, taskStatus))
+                .catch(() => showFullPageEditor(title, type, '', isCompleted, taskStatus));
+        };
+
+        document.getElementById('runPythonBtn').onclick = async function () {
+            if (!monacoEditor || currentTaskType !== 'backend') return;
+            const code = monacoEditor.getValue();
+            const panel = document.getElementById('runOutputPanel');
+            const content = document.getElementById('runOutputContent');
+            content.textContent = 'Running...';
+            panel.style.display = 'block';
+            try {
+                const res = await fetch('/api/run_python', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ code: code })
+                });
+                const data = await res.json().catch(() => ({}));
+                if (!res.ok) {
+                    content.textContent = 'Error: ' + (data.detail || 'Failed to run code');
+                    return;
+                }
+                let text = '';
+                if (data.stdout) text += data.stdout;
+                if (data.stderr) text += (text ? '\n' : '') + (data.stderr ? 'stderr: ' + data.stderr : '');
+                if (data.timeout) text = (text ? text + '\n' : '') + '(Timed out after 10s)';
+                if (!text) text = data.exit_code === 0 ? '(No output)' : 'Exit code: ' + data.exit_code;
+                content.textContent = text;
+            } catch (e) {
+                console.error(e);
+                content.textContent = 'Error: ' + (e.message || 'Failed to run code');
+            }
+        };
+
+        document.getElementById('previewHtmlBtn').onclick = function () {
+            if (!monacoEditor) return;
+            const code = monacoEditor.getValue();
+            const panel = document.getElementById('previewPanel');
+            const iframe = document.getElementById('previewIframe');
+            panel.style.display = 'block';
+            // Write HTML content into the iframe
+            const doc = iframe.contentDocument || iframe.contentWindow.document;
+            doc.open();
+            doc.write(code);
+            doc.close();
+        };
+
+        function closePreviewPanel() {
+            document.getElementById('previewPanel').style.display = 'none';
+        }
+
+        // ---- AI Assistant Panel ----
+        let aiPanelOpen = false;
+        let aiEditorMessages = [];
+
+        function toggleAiPanel() {
+            const panel = document.getElementById('aiAssistantPanel');
+            const btn = document.getElementById('aiAssistantBtn');
+            aiPanelOpen = !aiPanelOpen;
+            if (aiPanelOpen) {
+                panel.style.display = 'flex';
+                btn.classList.add('active');
+                // Focus input
+                setTimeout(() => document.getElementById('aiInput').focus(), 100);
+            } else {
+                panel.style.display = 'none';
+                btn.classList.remove('active');
+            }
+            // Trigger Monaco layout recalc
+            if (monacoEditor) setTimeout(() => monacoEditor.layout(), 350);
+        }
+
+        function renderAiReply(markdown) {
+            // Use marked.js for markdown rendering
+            let html = '';
+            if (typeof marked !== 'undefined') {
+                marked.setOptions({
+                    highlight: function (code, lang) {
+                        if (typeof hljs !== 'undefined' && lang && hljs.getLanguage(lang)) {
+                            return hljs.highlight(code, { language: lang }).value;
+                        }
+                        return code;
+                    },
+                    breaks: true
+                });
+                html = marked.parse(markdown);
+            } else {
+                html = markdown.replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br>');
+            }
+
+            // Add "Apply to Editor" buttons to code blocks
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = html;
+            const codeBlocks = tempDiv.querySelectorAll('pre code');
+            codeBlocks.forEach((block, idx) => {
+                const codeText = block.textContent;
+                const wrapper = document.createElement('div');
+                const applyBtn = document.createElement('button');
+                applyBtn.className = 'ai-apply-btn';
+                applyBtn.textContent = '✨ Apply to Editor';
+                applyBtn.onclick = function () { applyCodeToEditor(codeText); };
+                block.parentElement.after(wrapper);
+                wrapper.appendChild(applyBtn);
+            });
+
+            return tempDiv.innerHTML;
+        }
+
+        function applyCodeToEditor(code) {
+            if (monacoEditor) {
+                monacoEditor.setValue(code);
+            }
+        }
+
+        async function sendAiMessage() {
+            const input = document.getElementById('aiInput');
+            const text = (input.value || '').trim();
+            if (!text) return;
+            input.value = '';
+
+            const container = document.getElementById('aiMessages');
+
+            // Add user message
+            const userDiv = document.createElement('div');
+            userDiv.className = 'ai-msg ai-msg-user';
+            userDiv.textContent = text;
+            container.appendChild(userDiv);
+            container.scrollTop = container.scrollHeight;
+
+            // Add typing indicator
+            const typingDiv = document.createElement('div');
+            typingDiv.className = 'ai-msg-typing';
+            typingDiv.textContent = '🤖 Thinking…';
+            container.appendChild(typingDiv);
+            container.scrollTop = container.scrollHeight;
+
+            // Build context from editor
+            const editorCode = monacoEditor ? monacoEditor.getValue() : '';
+            const language = currentTaskType === 'frontend' ? 'html' : 'python';
+            const taskTitle = document.getElementById('editorTaskTitle').textContent || '';
+
+            try {
+                const res = await fetch('/api/chat/ai', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        message: text,
+                        context: {
+                            code: editorCode,
+                            language: language,
+                            task_title: taskTitle
+                        }
+                    })
+                });
+                const data = await res.json();
+                typingDiv.remove();
+
+                const reply = (data.reply || 'No response.').trim();
+                const replyDiv = document.createElement('div');
+                replyDiv.className = 'ai-msg ai-msg-assistant';
+                replyDiv.innerHTML = renderAiReply(reply);
+                container.appendChild(replyDiv);
+            } catch (e) {
+                typingDiv.remove();
+                const errDiv = document.createElement('div');
+                errDiv.className = 'ai-msg ai-msg-assistant';
+                errDiv.textContent = 'Sorry, something went wrong. Please try again.';
+                container.appendChild(errDiv);
+            }
+            container.scrollTop = container.scrollHeight;
+        }
+
+        // Enter to send, Shift+Enter for new line
+        document.getElementById('aiInput').addEventListener('keydown', function (e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendAiMessage();
+            }
+        });
+
+        document.getElementById('submitCodeBtn').onclick = async function () {
+            if (!monacoEditor) return;
+            const code = monacoEditor.getValue();
+
+            try {
+                const res = await fetch('/submit_code', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ task_id: currentTaskId, code: code })
+                });
+
+                if (res.ok) {
+                    alert('Code submitted successfully!');
+                    closeFullPageEditor();
+                    window.location.reload(); // Reload to update status
+                } else {
+                    const data = await res.json();
+                    alert('Error: ' + (data.detail || 'Failed to submit'));
+                }
+            } catch (e) {
+                console.error(e);
+                alert('Error submitting code');
+            }
+        };
+
+        document.getElementById('closeEditorBtn').onclick = closeFullPageEditor;
+
+        document.getElementById('pauseTaskEditorBtn').onclick = async function () {
+            if (!currentTaskId || !monacoEditor) return;
+
+            // Save current code before pausing
+            const code = monacoEditor.getValue();
+
+            try {
+                const res = await fetch(`/api/pause_task/${currentTaskId}`, {
+                    method: "POST",
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ code: code })
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    alert('Task paused successfully. Your code has been saved.');
+                    closeFullPageEditor();
+                    window.location.reload(); // Reload to update status
+                } else {
+                    alert('Error: ' + (data.detail || 'Failed to pause task'));
+                }
+            } catch (e) {
+                console.error(e);
+                alert('Error pausing task');
+            }
+        };
+
+        document.getElementById('closeModalBtn').onclick = function () {
+            document.getElementById('taskModal').style.display = "none";
+        };
+
+        window.onclick = function (event) {
+            const modal = document.getElementById('taskModal');
+            if (event.target === modal) {
+                modal.style.display = "none";
+            }
+        };
+    </script>
+
+    <!-- Floating Chat Widget (outside app layout so fixed position works) -->
+    <style>
+        #chatWidgetWrap {
+            position: fixed !important;
+            bottom: 24px !important;
+            right: 24px !important;
+            z-index: 9999 !important;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+
+        #chatWidgetWrap .chat-toggle-btn {
+            position: relative;
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #0ea5e9, #0891b2);
+            color: #fff;
+            border: none;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        #chatWidgetWrap .chat-toggle-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(14, 165, 233, 0.35);
+        }
+
+        #chatWidgetWrap .chat-toggle-btn .chat-badge {
+            position: absolute;
+            top: -4px;
+            right: -4px;
+            min-width: 20px;
+            height: 20px;
+            padding: 0 6px;
+            background: #ef4444;
+            color: white;
+            font-size: 0.7rem;
+            font-weight: 600;
+            border-radius: 10px;
+            display: none;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #chatWidgetWrap .chat-toggle-btn.has-badge .chat-badge {
+            display: flex;
+        }
+
+        #chatWidgetWrap .chat-panel {
+            display: none;
+            position: absolute;
+            right: 0;
+            bottom: 64px;
+            width: 380px;
+            max-width: calc(100vw - 48px);
+            height: 480px;
+            max-height: calc(100vh - 120px);
+            background: #fff;
+            border-radius: 12px;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+            border: 1px solid #e2e8f0;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        #chatWidgetWrap.chat-open .chat-panel {
+            display: flex !important;
+        }
+
+        #chatWidgetWrap .chat-panel-header {
+            padding: 12px 16px;
+            background: #f1f5f9;
+            border-bottom: 1px solid #e2e8f0;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        #chatWidgetWrap .chat-panel-title {
+            font-size: 1rem;
+            font-weight: 600;
+            color: #1e293b;
+        }
+
+        #chatWidgetWrap .chat-panel-close {
+            background: none;
+            border: none;
+            color: #64748b;
+            font-size: 1.5rem;
+            cursor: pointer;
+            padding: 0 4px;
+            line-height: 1;
+        }
+
+        #chatWidgetWrap .chat-panel-close:hover {
+            color: #1e293b;
+        }
+
+        #chatWidgetWrap .chat-status {
+            font-size: 0.75rem;
+            color: #64748b;
+            padding: 6px 16px;
+            background: #f1f5f9;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        #chatWidgetWrap .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            background: #f8fafc;
+        }
+
+        #chatWidgetWrap .chat-msg {
+            max-width: 85%;
+            padding: 10px 14px;
+            border-radius: 12px;
+            font-size: 0.875rem;
+            line-height: 1.45;
+            word-break: break-word;
+        }
+
+        #chatWidgetWrap .chat-msg.msg-other {
+            align-self: flex-start;
+            background: #fff;
+            border: 1px solid #e2e8f0;
+            color: #1e293b;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+        }
+
+        #chatWidgetWrap .chat-msg.msg-self {
+            align-self: flex-end;
+            background: linear-gradient(135deg, #0ea5e9, #0891b2);
+            color: #fff;
+        }
+
+        #chatWidgetWrap .chat-msg-sender {
+            font-size: 0.7rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+            margin-bottom: 4px;
+            opacity: 0.9;
+        }
+
+        #chatWidgetWrap .chat-msg.msg-other .chat-msg-sender {
+            color: #0891b2;
+        }
+
+        #chatWidgetWrap .chat-msg.msg-self .chat-msg-sender {
+            color: rgba(255, 255, 255, 0.95);
+        }
+
+        #chatWidgetWrap .chat-msg-time {
+            font-size: 0.7rem;
+            opacity: 0.75;
+            margin-top: 4px;
+        }
+
+        #chatWidgetWrap .chat-input-row {
+            padding: 12px;
+            border-top: 1px solid #e2e8f0;
+            background: #fff;
+            display: flex;
+            gap: 8px;
+            align-items: flex-end;
+        }
+
+        #chatWidgetWrap .chat-input {
+            flex: 1;
+            padding: 10px 14px;
+            border: 1.5px solid #cbd5e1;
+            border-radius: 8px;
+            font-size: 0.875rem;
+            font-family: inherit;
+            resize: none;
+            min-height: 42px;
+            max-height: 100px;
+        }
+
+        #chatWidgetWrap .chat-input:focus {
+            outline: none;
+            border-color: #0ea5e9;
+            box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.1);
+        }
+
+        #chatWidgetWrap .chat-send-btn {
+            padding: 10px 18px;
+            background: linear-gradient(135deg, #0ea5e9, #0891b2);
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            font-size: 0.875rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        #chatWidgetWrap .chat-send-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+
+        #chatWidgetWrap .chat-send-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        #chatWidgetWrap .chat-mode-toggle {
+            display: flex;
+            gap: 0;
+            padding: 6px 12px;
+            background: #f1f5f9;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        #chatWidgetWrap .chat-mode-btn {
+            flex: 1;
+            padding: 8px 12px;
+            border: 1px solid #cbd5e1;
+            background: #fff;
+            color: #64748b;
+            font-size: 0.8rem;
+            font-weight: 600;
+            cursor: pointer;
+            border-radius: 6px;
+            margin: 0 2px;
+            transition: background 0.2s, color 0.2s, border-color 0.2s;
+        }
+
+        #chatWidgetWrap .chat-mode-btn:first-child {
+            margin-left: 0;
+        }
+
+        #chatWidgetWrap .chat-mode-btn:last-child {
+            margin-right: 0;
+        }
+
+        #chatWidgetWrap .chat-mode-btn:hover {
+            background: #e2e8f0;
+            color: #1e293b;
+        }
+
+        #chatWidgetWrap .chat-mode-btn.chat-mode-active {
+            background: linear-gradient(135deg, #0ea5e9, #0891b2);
+            color: #fff;
+            border-color: #0891b2;
+        }
+
+        #chatWidgetWrap .chat-msg-typing .chat-msg-text {
+            font-style: italic;
+            opacity: 0.85;
+        }
+
+        #chatWidgetWrap .chat-voice-wrap {
+            flex-shrink: 0;
+            display: flex;
+            align-items: flex-end;
+        }
+
+        #chatWidgetWrap .chat-voice-btn {
+            width: 42px;
+            height: 42px;
+            min-width: 42px;
+            border-radius: 50%;
+            border: 1.5px solid #cbd5e1;
+            background: #fff;
+            color: #64748b;
+            font-size: 1.2rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.2s, color 0.2s, border-color 0.2s;
+        }
+
+        #chatWidgetWrap .chat-voice-btn:hover {
+            background: #f1f5f9;
+            color: #0ea5e9;
+            border-color: #0ea5e9;
+        }
+
+        #chatWidgetWrap .chat-voice-btn.chat-voice-recording {
+            background: #fee2e2;
+            color: #ef4444;
+            border-color: #ef4444;
+            animation: chat-voice-pulse 1s ease-in-out infinite;
+        }
+
+        @keyframes chat-voice-pulse {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.7;
+            }
+        }
+    </style>
+    <div id="chatWidgetWrap" class="chat-widget-wrap">
+        <button type="button" id="chatToggleBtn" class="chat-toggle-btn" title="Group chat" aria-label="Open chat">
+            <span class="chat-badge" id="chatUnreadBadge">0</span>
+            💬
+        </button>
+        <div class="chat-panel">
+            <div class="chat-panel-header">
+                <span class="chat-panel-title" id="chatPanelTitle">Team Chat</span>
+                <button type="button" id="chatPanelClose" class="chat-panel-close"
+                    aria-label="Close chat">&times;</button>
+            </div>
+            <div class="chat-mode-toggle">
+                <button type="button" id="chatModeTeam" class="chat-mode-btn chat-mode-active">Team</button>
+                <button type="button" id="chatModeAi" class="chat-mode-btn">AI</button>
+            </div>
+            <div class="chat-status" id="chatStatus">Connecting…</div>
+            <div class="chat-messages" id="chatMessages"></div>
+            <div class="chat-input-row">
+                <span id="chatVoiceWrap" class="chat-voice-wrap" style="display: none;">
+                    <button type="button" id="chatVoiceBtn" class="chat-voice-btn" title="Record voice message"
+                        aria-label="Record voice">🎤</button>
+                </span>
+                <textarea id="chatInput" class="chat-input" placeholder="Type a message…" rows="1"></textarea>
+                <button type="button" id="chatSendBtn" class="chat-send-btn">Send</button>
+            </div>
+        </div>
+    </div>
+</body>
+
+</html>

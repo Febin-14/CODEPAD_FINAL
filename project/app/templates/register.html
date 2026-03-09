@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CodePad - Register</title>
+    <link rel="stylesheet" href="{{ url_for('static', path='style.css') }}?v=2">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="{{ url_for('static', path='theme.js') }}"></script>
+</head>
+
+<body class="login-body">
+    
+    <div class="login-wrapper">
+        <div class="login-container" style="position: relative;">
+            <button id="theme-toggle" class="theme-toggle" aria-label="Toggle Theme" title="Toggle Theme" style="position: absolute; top: 16px; right: 24px; background: none; border: none; cursor: pointer; display:flex; align-items:center; justify-content:center; padding: 6px; border-radius: 50%; transition: background 0.2s;">
+                <img src="/static/moon.png" id="theme-icon" alt="Theme Toggle" style="width:24px;height:24px;transition:transform 0.3s;filter:invert(0.8);">
+            </button>
+            
+            
+            <div class="login-header">
+                <h1 class="login-brand">CodePad</h1>
+                <p class="login-subtitle">Create your project workspace account</p>
+            </div>
+
+            <form action="/register" method="post" class="login-form">
+                <div class="input-group">
+                    <label for="username" class="input-label">Username</label>
+                    <input type="text" id="username" name="username" class="text-input" placeholder="Choose a username"
+                        required>
+                </div>
+
+                <div class="input-group">
+                    <label for="password" class="input-label">Password</label>
+                    <input type="password" id="password" name="password" class="text-input"
+                        placeholder="Create a password" required>
+                </div>
+
+                <div class="input-group">
+                    <label for="role" class="input-label">Role</label>
+                    <select id="role" name="role" class="select-input" required>
+                        <option value="manager">Project Manager</option>
+                        <option value="frontend developer">Frontend Developer</option>
+                        <option value="backend developer">Backend Developer</option>
+                    </select>
+                </div>
+
+                <div class="input-group">
+                    <label for="description" class="input-label">Bio / Description</label>
+                    <textarea id="description" name="description" class="text-input"
+                        placeholder="Tell us about your experience..." rows="3" required></textarea>
+                </div>
+
+                <button type="submit" class="login-button">
+                    Register
+                </button>
+            </form>
+
+            {% if request.query_params.get('error') == 'exists' %}
+            <div class="error-message"
+                style="display: block; color: var(--danger); margin-top: 1rem; text-align: center; font-size: 0.9rem;">
+                <span class="error-text">Username already exists. Please choose a different one.</span>
+            </div>
+            {% endif %}
+
+            <div style="margin-top: 1.5rem; text-align: center;">
+                <span style="color: var(--text-muted); font-size: 0.9rem;">Already have an account? </span>
+                <a href="/"
+                    style="color: var(--accent-1); text-decoration: none; font-size: 0.9rem; font-weight: 500;">Sign
+                    In</a>
+            </div>
+        </div>
+    </div>
+</body>
+
+</html>
