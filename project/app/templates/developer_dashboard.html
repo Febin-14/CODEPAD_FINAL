@@ -169,8 +169,9 @@
             style="background: #f0f0f0; border-bottom: 1px solid #d1d1d1; padding: 10px 16px; display: flex; align-items: center; justify-content: space-between; width: 100%; box-sizing: border-box;">
             <!-- Traffic Lights -->
             <div style="display: flex; gap: 8px; width: 220px; align-items: center;">
-                <div onclick="document.getElementById('closeEditorBtn').click()"
-                    style="width: 12px; height: 12px; border-radius: 50%; background: #ff5f56; border: 1px solid #e0443e; cursor: pointer;">
+                <div onclick="closeFullPageEditor()"
+                    style="width: 12px; height: 12px; border-radius: 50%; background: #ff5f56; border: 1px solid #e0443e; cursor: pointer;"
+                    title="Close Editor">
                 </div>
                 <div
                     style="width: 12px; height: 12px; border-radius: 50%; background: #ffbd2e; border: 1px solid #dea123;">
@@ -194,9 +195,15 @@
                 <button id="aiAssistantBtn" class="editor-ai-btn" onclick="toggleAiPanel()"
                     style="background: rgba(0,0,0,0.05); color: #333; border: 1px solid rgba(0,0,0,0.1); border-radius: 6px; padding: 4px 10px; font-size: 0.75rem; font-weight: 600; cursor: pointer; transition: all 0.2s;">🤖
                     AI Assist</button>
+                <button id="historyBtn" class="editor-history-btn" onclick="toggleHistoryPanel()"
+                    style="background: rgba(0,0,0,0.05); color: #333; border: 1px solid rgba(0,0,0,0.1); border-radius: 6px; padding: 4px 10px; font-size: 0.75rem; font-weight: 600; cursor: pointer; transition: all 0.2s;">📜
+                    History</button>
                 <button id="runPythonBtn" class="editor-run-btn"
                     style="display:none; background: #fff; color: #333; border: 1px solid rgba(0,0,0,0.1); border-radius: 6px; padding: 4px 10px; font-size: 0.75rem; font-weight: 600; cursor: pointer; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">▶
                     Run</button>
+                <button id="saveProgressBtn" class="editor-save-btn" onclick="saveCodeProgress()"
+                    style="background: #fff; color: #333; border: 1px solid rgba(0,0,0,0.1); border-radius: 6px; padding: 4px 10px; font-size: 0.75rem; font-weight: 600; cursor: pointer; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">💾
+                    Save</button>
                 <button id="previewHtmlBtn" class="editor-preview-btn"
                     style="display:none; background: #fff; color: #333; border: 1px solid rgba(0,0,0,0.1); border-radius: 6px; padding: 4px 10px; font-size: 0.75rem; font-weight: 600; cursor: pointer; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">👁
                     Preview</button>
@@ -225,10 +232,11 @@
                 <div id="previewPanel"
                     style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 2000; background: #fff; flex-direction: column;">
                     <div class="mac-window-header"
-                        style="display: flex; justify-content: space-between; align-items: center; padding: 10px 16px; background: #f0f0f0; border-bottom: 1px solid #d1d1d1; width: 100%; box-sizing: border-box;">
+                        style="display: flex; justify-content: space-between; align-items: center; padding: 10px 16px; background: rgba(240, 240, 240, 0.7); backdrop-filter: blur(8px); border-bottom: 1px solid rgba(0,0,0,0.1); width: 100%; box-sizing: border-box; position: absolute; top: 0; left: 0; z-index: 10;">
                         <div style="display: flex; gap: 8px; width: 140px; align-items: center;">
-                            <div onclick="closePreviewPanel()"
-                                style="width: 12px; height: 12px; border-radius: 50%; background: #ff5f56; border: 1px solid #e0443e; cursor: pointer;">
+                            <div onclick="closeFullPageEditor()"
+                                style="width: 12px; height: 12px; border-radius: 50%; background: #ff5f56; border: 1px solid #e0443e; cursor: pointer;"
+                                title="Close Editor Session">
                             </div>
                             <div
                                 style="width: 12px; height: 12px; border-radius: 50%; background: #ffbd2e; border: 1px solid #dea123;">
@@ -241,9 +249,15 @@
                             style="flex-grow: 1; text-align: center; color: #4A4A4A; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 13px; font-weight: 600;">
                             Live Preview
                         </div>
-                        <div style="width: 140px;"></div>
+                        <div style="width: 140px; display: flex; justify-content: flex-end;">
+                            <button onclick="closePreviewPanel()"
+                                style="background: rgba(0,0,0,0.1); border: 1px solid rgba(0,0,0,0.1); border-radius: 4px; padding: 4px 8px; font-size: 11px; font-weight: 600; cursor: pointer; color: inherit; display: flex; align-items: center; gap: 4px; transition: all 0.2s;">
+                                ⬅ Back to Editor
+                            </button>
+                        </div>
                     </div>
-                    <iframe id="previewIframe" style="width: 100%; flex: 1; border: none; background: #fff;"></iframe>
+                    <iframe id="previewIframe"
+                        style="width: 100%; height: 100%; border: none; background: #fff;"></iframe>
                 </div>
             </div>
 
@@ -253,13 +267,22 @@
                     <span class="ai-panel-title">🤖 AI Assistant</span>
                     <button class="ai-panel-close" onclick="toggleAiPanel()">&times;</button>
                 </div>
-                <div id="aiMessages" class="ai-messages"></div>
-                <div class="ai-input-area">
-                    <textarea id="aiInput" class="ai-input" placeholder="Ask about your code…" rows="2"></textarea>
-                    <button class="ai-send-btn" onclick="sendAiMessage()">Send</button>
+            </div>
+        </div>
+
+        <!-- History Side Panel -->
+        <div id="historyPanel" class="history-panel" style="display: none;">
+            <div class="history-panel-header">
+                <span class="history-panel-title">📜 Code History</span>
+                <button class="history-panel-close" onclick="toggleHistoryPanel()">&times;</button>
+            </div>
+            <div id="historyList" class="history-list">
+                <div style="padding: 20px; text-align: center; color: var(--text-muted);">
+                    Loading history...
                 </div>
             </div>
         </div>
+    </div>
     </div>
 
     <style>
@@ -791,6 +814,139 @@
             border-bottom-left-radius: 4px;
         }
 
+        /* History Panel Styles */
+        .history-panel {
+            width: 350px;
+            min-width: 350px;
+            background: #1e1e2e;
+            border-left: 1px solid rgba(255, 255, 255, 0.08);
+            display: flex;
+            flex-direction: column;
+            animation: historySlideIn 0.3s cubic-bezier(.4, 0, .2, 1);
+        }
+
+        @keyframes historySlideIn {
+            from {
+                width: 0;
+                min-width: 0;
+                opacity: 0;
+            }
+
+            to {
+                width: 350px;
+                min-width: 350px;
+                opacity: 1;
+            }
+        }
+
+        .history-panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 16px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        .history-panel-title {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .history-panel-close {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            font-size: 1.3rem;
+            cursor: pointer;
+            padding: 0 4px;
+            line-height: 1;
+        }
+
+        .history-panel-close:hover {
+            color: var(--text-primary);
+        }
+
+        .history-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .history-item {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+            padding: 12px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .history-item:hover {
+            background: rgba(255, 255, 255, 0.08);
+            border-color: var(--accent-1);
+            transform: translateY(-1px);
+        }
+
+        .history-item-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 4px;
+        }
+
+        .history-item-time {
+            font-size: 0.8rem;
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+
+        .history-item-user {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.02em;
+        }
+
+        .history-item-preview {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            font-family: 'Menlo', 'Monaco', monospace;
+            background: rgba(0, 0, 0, 0.2);
+            padding: 4px 6px;
+            border-radius: 4px;
+            margin-top: 4px;
+        }
+
+        .editor-history-btn {
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+            color: #fff;
+            border: none;
+            border-radius: var(--radius-sm);
+            padding: 7px 14px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .editor-history-btn:hover {
+            box-shadow: 0 0 12px rgba(245, 158, 11, 0.5);
+            transform: translateY(-1px);
+        }
+
+        .editor-history-btn.active {
+            background: linear-gradient(135deg, #d97706, #b45309);
+            box-shadow: 0 0 12px rgba(245, 158, 11, 0.4);
+        }
+
         .ai-msg-assistant pre {
             background: #1a1a2e;
             border: 1px solid rgba(255, 255, 255, 0.06);
@@ -968,12 +1124,67 @@
     </style>
 
     <script>
+        alert("Dashboard Script Initialized");
         let monacoEditor = null;
         let currentTaskId = null;
         let currentTaskType = null;
         let developerWebSocket = null;
+        let aiPanelOpen = false;
+        let aiEditorMessages = [];
 
-        function showFullPageEditor(taskTitle, taskType, initialCode = '', isReadOnly = false, taskStatus = '') {
+        // Assign submit button handler immediately to avoid race conditions
+        document.addEventListener('DOMContentLoaded', () => {
+            const submitBtn = document.getElementById('submitCodeBtn');
+            if (submitBtn) {
+                submitBtn.onclick = async function () {
+                    console.log("Submit button clicked!");
+                    if (!monacoEditor) {
+                        alert('Error: Editor not initialized');
+                        return;
+                    }
+                    if (!currentTaskId) {
+                        alert('Error: No active task');
+                        return;
+                    }
+
+                    const code = monacoEditor.getValue();
+                    const btn = this;
+                    const originalText = btn.textContent;
+                    btn.textContent = 'Submitting...';
+                    btn.disabled = true;
+
+                    try {
+                        const res = await fetch('/submit_code', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ task_id: currentTaskId, code: code })
+                        });
+
+                        if (res.ok) {
+                            alert('Code submitted successfully!');
+                            await closeFullPageEditor(true);
+                            window.location.reload();
+                        } else {
+                            const data = await res.json();
+                            alert('Error: ' + (data.detail || 'Failed to submit'));
+                            btn.textContent = originalText;
+                            btn.disabled = false;
+                        }
+                    } catch (e) {
+                        alert('Error submitting code: ' + e.message);
+                        btn.textContent = originalText;
+                        btn.disabled = false;
+                    }
+                };
+                console.log("Submit button handler attached");
+            } else {
+                console.error("Submit button element not found!");
+            }
+        });
+
+        function showFullPageEditor(taskId, taskTitle, taskType, initialCode = '', isReadOnly = false, taskStatus = '') {
+            // ... (keep the rest of the functions)
+            currentTaskId = taskId;
             currentTaskType = taskType;
             document.getElementById('editorTaskTitle').textContent = taskTitle;
             const badge = document.getElementById('editorTaskType');
@@ -1074,8 +1285,26 @@
             };
         }
 
-        function closeFullPageEditor() {
+        async function closeFullPageEditor(skipSave = false) {
+            // Auto-save progress if in_progress
+            if (!skipSave && currentTaskId && monacoEditor) {
+                const code = monacoEditor.getValue();
+                // We use the pause endpoint as it's a "silent" save to 'paused' status
+                try {
+                    await fetch(`/api/pause_task/${currentTaskId}`, {
+                        method: "POST",
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ code: code, task_id: currentTaskId })
+                    });
+                    console.log("Progress auto-saved on editor close.");
+                } catch (e) {
+                    console.error("Auto-save failed:", e);
+                }
+            }
+
             document.getElementById('codeEditorPage').style.display = 'none';
+            document.getElementById('previewPanel').style.display = 'none';
+            document.getElementById('runOutputPanel').style.display = 'none';
             document.body.style.overflow = 'auto';
 
             // Show the group chat toggle button again when the editor is closed
@@ -1100,6 +1329,43 @@
             if (monacoEditor) {
                 monacoEditor.dispose();
                 monacoEditor = null;
+            }
+        }
+
+        async function saveCodeProgress() {
+            if (!currentTaskId || !monacoEditor) return;
+
+            const saveBtn = document.getElementById('saveProgressBtn');
+            const originalContent = saveBtn.innerHTML;
+            saveBtn.innerHTML = 'Saving...';
+            saveBtn.disabled = true;
+
+            const code = monacoEditor.getValue();
+
+            try {
+                const res = await fetch(`/api/pause_task/${currentTaskId}`, {
+                    method: "POST",
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ code: code, task_id: currentTaskId })
+                });
+
+                if (res.ok) {
+                    saveBtn.innerHTML = '✅ Saved!';
+                    setTimeout(() => {
+                        saveBtn.innerHTML = originalContent;
+                        saveBtn.disabled = false;
+                    }, 2000);
+                } else {
+                    const data = await res.json();
+                    alert('Error saving: ' + (data.detail || 'Failed to save'));
+                    saveBtn.innerHTML = originalContent;
+                    saveBtn.disabled = false;
+                }
+            } catch (e) {
+                console.error(e);
+                alert('Error saving code');
+                saveBtn.innerHTML = originalContent;
+                saveBtn.disabled = false;
             }
         }
 
@@ -1288,8 +1554,8 @@
             // Fetch existing code if any
             fetch(`/get_task_code/${currentTaskId}`)
                 .then(res => res.json())
-                .then(data => showFullPageEditor(title, type, data.code || '', isCompleted, taskStatus))
-                .catch(() => showFullPageEditor(title, type, '', isCompleted, taskStatus));
+                .then(data => showFullPageEditor(currentTaskId, title, type, data.code || '', isCompleted, taskStatus))
+                .catch(() => showFullPageEditor(currentTaskId, title, type, '', isCompleted, taskStatus));
         };
 
         let pythonRunWS = null;
@@ -1375,8 +1641,70 @@
         }
 
         // ---- AI Assistant Panel ----
-        let aiPanelOpen = false;
-        let aiEditorMessages = [];
+
+        function toggleHistoryPanel() {
+            const panel = document.getElementById('historyPanel');
+            const btn = document.getElementById('historyBtn');
+            const aiPanel = document.getElementById('aiAssistantPanel');
+            const aiBtn = document.getElementById('aiAssistantBtn');
+
+            if (panel.style.display === 'none') {
+                // Close AI panel if open
+                if (aiPanel.style.display !== 'none') {
+                    toggleAiPanel();
+                }
+                panel.style.display = 'flex';
+                btn.classList.add('active');
+                loadHistory();
+            } else {
+                panel.style.display = 'none';
+                btn.classList.remove('active');
+            }
+        }
+
+        async function loadHistory() {
+            const list = document.getElementById('historyList');
+            if (!currentTaskId) return;
+
+            try {
+                const res = await fetch(`/api/tasks/${currentTaskId}/history`);
+                const data = await res.json();
+
+                if (!data.history || data.history.length === 0) {
+                    list.innerHTML = `<div style="padding: 20px; text-align: center; color: var(--text-muted);">No history available yet.</div>`;
+                    return;
+                }
+
+                list.innerHTML = '';
+                data.history.forEach((entry, idx) => {
+                    const item = document.createElement('div');
+                    item.className = 'history-item';
+
+                    const date = new Date(entry.timestamp);
+                    const timeStr = date.toLocaleString();
+
+                    const codePreview = entry.code.split('\n')[0].substring(0, 40) + '...';
+
+                    item.innerHTML = `
+                                <div class="history-item-header">
+                                    <span class="history-item-time">${timeStr}</span>
+                                    <span class="history-item-user">${entry.username}</span>
+                                </div>
+                                <div class="history-item-preview">${codePreview.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</div>
+                            `;
+
+                    item.onclick = function () {
+                        if (confirm(`Restore this version from ${timeStr}? Current changes will be overwritten.`)) {
+                            applyCodeToEditor(entry.code);
+                        }
+                    };
+                    list.appendChild(item);
+                });
+            } catch (e) {
+                console.error(e);
+                list.innerHTML = `<div style="padding: 20px; text-align: center; color: #ef4444;">Error loading history.</div>`;
+            }
+        }
 
         function toggleAiPanel() {
             const panel = document.getElementById('aiAssistantPanel');
@@ -1504,8 +1832,23 @@
         });
 
         document.getElementById('submitCodeBtn').onclick = async function () {
-            if (!monacoEditor) return;
+            if (!monacoEditor) {
+                console.error('Submit failed: monacoEditor is not initialized');
+                return;
+            }
+            if (!currentTaskId) {
+                console.error('Submit failed: currentTaskId is missing');
+                alert('Error: No Task ID current selected. Please close and re-open the task.');
+                return;
+            }
+
             const code = monacoEditor.getValue();
+            console.log('Attempting to submit code for Task ID:', currentTaskId);
+
+            const btn = this;
+            const originalText = btn.textContent;
+            btn.textContent = 'Submitting...';
+            btn.disabled = true;
 
             try {
                 const res = await fetch('/submit_code', {
@@ -1514,21 +1857,30 @@
                     body: JSON.stringify({ task_id: currentTaskId, code: code })
                 });
 
+                console.log('Submission response status:', res.status);
+
                 if (res.ok) {
+                    const data = await res.json();
+                    console.log('Submission success:', data);
                     alert('Code submitted successfully!');
-                    closeFullPageEditor();
-                    window.location.reload(); // Reload to update status
+                    await closeFullPageEditor(true); // skip auto-save
+                    window.location.reload();
                 } else {
                     const data = await res.json();
+                    console.error('Submission failed with error:', data);
                     alert('Error: ' + (data.detail || 'Failed to submit'));
+                    btn.textContent = originalText;
+                    btn.disabled = false;
                 }
             } catch (e) {
-                console.error(e);
-                alert('Error submitting code');
+                console.error('Submission fetch error:', e);
+                alert('Error submitting code: ' + e.message);
+                btn.textContent = originalText;
+                btn.disabled = false;
             }
         };
 
-        document.getElementById('closeEditorBtn').onclick = closeFullPageEditor;
+        document.getElementById('closeEditorBtn').onclick = () => closeFullPageEditor();
 
         document.getElementById('pauseTaskEditorBtn').onclick = async function () {
             if (!currentTaskId || !monacoEditor) return;
@@ -1540,13 +1892,13 @@
                 const res = await fetch(`/api/pause_task/${currentTaskId}`, {
                     method: "POST",
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ code: code })
+                    body: JSON.stringify({ code: code, task_id: currentTaskId })
                 });
                 const data = await res.json();
                 if (res.ok) {
                     alert('Task paused successfully. Your code has been saved.');
-                    closeFullPageEditor();
-                    window.location.reload(); // Reload to update status
+                    await closeFullPageEditor(true); // already saved, skip auto-save
+                    window.location.reload();
                 } else {
                     alert('Error: ' + (data.detail || 'Failed to pause task'));
                 }

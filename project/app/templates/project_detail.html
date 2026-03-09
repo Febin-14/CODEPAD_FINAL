@@ -152,7 +152,8 @@
                                                 <button type="button" class="view-code-btn"
                                                     data-task-id="{{ task._id }}" data-task-title="{{ task.title }}"
                                                     data-task-type="{{ task.type }}"
-                                                    onclick="openSubmittedCodeModal(this.dataset.taskId, this.dataset.taskTitle, this.dataset.taskType)"
+                                                    data-task-status="{{ task.status }}"
+                                                    onclick="openSubmittedCodeModal(this.dataset.taskId, this.dataset.taskTitle, this.dataset.taskType, this.dataset.taskStatus)"
                                                     title="View Submitted Code">
                                                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
                                                         stroke="currentColor" stroke-width="2" stroke-linecap="round"
@@ -317,6 +318,22 @@
                         style="color: #000000; font-family: 'Menlo', 'Monaco', 'Courier New', monospace; font-size: 14px; white-space: pre-wrap; margin: 0; display: inline;"></pre>
                     <span id="submittedTerminalCursor"
                         style="display: inline-block; width: 8px; height: 16px; background: #000000; vertical-align: middle; animation: blink 1s step-end infinite;"></span>
+                </div>
+            </div>
+            <!-- Review Section -->
+            <div id="reviewSection" class="modal-review-section"
+                style="display: none; padding: 20px; background: #2d2d2d; border-top: 1px solid #444; border-bottom-left-radius: 12px; border-bottom-right-radius: 12px;">
+                <h4 class="review-header" style="color: #e0e0e0; margin-bottom: 12px; font-size: 1rem;">Reviewer
+                    Feedback
+                </h4>
+                <textarea id="reviewComments" class="review-comments-input"
+                    style="width: 100%; min-height: 80px; padding: 12px; border-radius: 8px; background: #1e1e1e; border: 1px solid #444; color: #e0e0e0; font-family: inherit; margin-bottom: 16px; resize: vertical;"
+                    placeholder="Type your feedback here... REQUIRED for reassigning."></textarea>
+                <div class="review-actions" style="display: flex; gap: 12px; justify-content: flex-end;">
+                    <button type="button" class="approve-btn" onclick="approveSubmittedTask()">Approve & Close
+                        Task</button>
+                    <button type="button" class="reject-btn" onclick="rejectSubmittedTask()">Reassign to
+                        Developer</button>
                 </div>
             </div>
         </div>
@@ -598,12 +615,21 @@
         // ── Submitted Code Modal ──────────────────────────────────────
         let currentSubmittedTaskType = 'backend';
         let currentSubmittedCode = '';
+        let currentReviewTaskId = null;
 
-        function openSubmittedCodeModal(taskId, title, taskType) {
+        function openSubmittedCodeModal(taskId, title, taskType, status) {
+            currentReviewTaskId = taskId;
             currentSubmittedTaskType = taskType;
             document.getElementById('submittedModalTaskTitle').innerText = title + ' — Submitted Code';
             document.getElementById('submittedCodeModal').style.display = 'block';
             document.getElementById('submittedCodeLoading').style.display = 'block';
+
+            // Show review section only if status is submitted_for_review
+            const reviewSection = document.getElementById('reviewSection');
+            if (reviewSection) {
+                reviewSection.style.display = (status === 'submitted_for_review') ? 'block' : 'none';
+                document.getElementById('reviewComments').value = '';
+            }
 
             // Setup Tab based on task type
             const previewBtn = document.getElementById('tabPreviewBtn');
@@ -785,6 +811,62 @@
             // Reset preview iframe
             const iframe = document.getElementById('submitted-preview-iframe');
             if (iframe) iframe.srcdoc = '';
+            currentReviewTaskId = null;
+        }
+
+        async function approveSubmittedTask() {
+            if (!currentReviewTaskId) return;
+            if (!confirm('Are you sure you want to approve this task?')) return;
+
+            try {
+                const res = await fetch('/api/approve_task', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ task_id: currentReviewTaskId })
+                });
+
+                if (res.ok) {
+                    alert('Task approved successfully!');
+                    window.location.reload();
+                } else {
+                    const data = await res.json();
+                    alert('Error: ' + (data.detail || 'Failed to approve task'));
+                }
+            } catch (e) {
+                console.error(e);
+                alert('Connection error while approving task');
+            }
+        }
+
+        async function rejectSubmittedTask() {
+            if (!currentReviewTaskId) return;
+            const comments = document.getElementById('reviewComments').value.trim();
+            if (!comments) {
+                alert('Please provide feedback comments before reassigning the task.');
+                return;
+            }
+
+            try {
+                const res = await fetch('/api/reject_task', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        task_id: currentReviewTaskId,
+                        comments: comments
+                    })
+                });
+
+                if (res.ok) {
+                    alert('Task reassigned to developer with your feedback.');
+                    window.location.reload();
+                } else {
+                    const data = await res.json();
+                    alert('Error: ' + (data.detail || 'Failed to reassign task'));
+                }
+            } catch (e) {
+                console.error(e);
+                alert('Connection error while reassigning task');
+            }
         }
 
         function openLiveCodeView(taskId, title, taskType) {

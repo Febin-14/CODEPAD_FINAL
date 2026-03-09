@@ -1,8 +1,9 @@
-from fastapi import APIRouter, Form, Request, status, HTTPException
+from fastapi import APIRouter, Form, Request, status, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.responses import RedirectResponse, JSONResponse
-from app.models.schemas import User, Task, Project, CodeSubmission, TaskReview, DeveloperSession, RunPythonRequest
+from app.models.schemas import User, Task, Project, CodeSubmission, TaskReview, DeveloperSession, RunPythonRequest, CodeHistory
 from app.models.db import get_db
 from app.services.assignment import assign_task_to_developer
+from app.services.history_service import save_version
 from bson import ObjectId
 import os
 import re
@@ -14,6 +15,8 @@ import httpx
 import subprocess
 import tempfile
 import sys
+import asyncio
+import signal
 
 load_dotenv()
 
@@ -306,16 +309,25 @@ async def submit_code(request: Request, submission: CodeSubmission):
         raise HTTPException(status_code=401, detail="Not authenticated")
     
     db = get_db()
+    # Save code history before updating the task
+    await save_version(submission.task_id, submission.code, username)
+
     result = await db.tasks.update_one(
         {"_id": ObjectId(submission.task_id), "assigned_to": username},
         {"$set": {"code": submission.code, "status": "submitted_for_review", "comments": None}}
     )
     
-    if result.modified_count == 1:
-        print(f"--- Code Submitted for Task ID: {submission.task_id} ---\n{submission.code}\n---------------------------------------------")
+    if result.matched_count == 1:
+        print(f"--- Code Submitted for Task ID: {submission.task_id} ---")
         return JSONResponse(content={"success": True, "message": "Code submitted successfully for review"})
     
-    raise HTTPException(status_code=404, detail="Task not found or not assigned to you")
+    # If no match, check if task exists at all to give better error
+    task_exists = await db.tasks.find_one({"_id": ObjectId(submission.task_id)})
+    if not task_exists:
+        raise HTTPException(status_code=404, detail=f"Task {submission.task_id} not found")
+    else:
+        actual_owner = task_exists.get("assigned_to")
+        raise HTTPException(status_code=403, detail=f"Task is assigned to {actual_owner}, not {username}")
 
 @router.get("/get_task_code/{task_id}")
 async def get_task_code(request: Request, task_id: str):
@@ -325,9 +337,46 @@ async def get_task_code(request: Request, task_id: str):
         return {"code": task.get("code", "")}
     return {"code": ""}
 
+@router.post("/api/approve_task")
+async def approve_task(request: Request, review: TaskReview):
+    username = request.cookies.get("username")
+    role = request.cookies.get("role")
+    if not username or role != "manager":
+        raise HTTPException(status_code=401, detail="Only managers can approve tasks")
+    
+    db = get_db()
+    result = await db.tasks.update_one(
+        {"_id": ObjectId(review.task_id)},
+        {"$set": {"status": "done", "comments": "Approved by manager."}}
+    )
+    
+    if result.modified_count == 1:
+        return {"success": True, "message": "Task approved"}
+    raise HTTPException(status_code=404, detail="Task not found")
+
+@router.post("/api/reject_task")
+async def reject_task(request: Request, review: TaskReview):
+    username = request.cookies.get("username")
+    role = request.cookies.get("role")
+    if not username or role != "manager":
+        raise HTTPException(status_code=401, detail="Only managers can reject tasks")
+    
+    if not review.comments:
+        raise HTTPException(status_code=400, detail="Comments are required when reassigning/rejecting a task")
+    
+    db = get_db()
+    result = await db.tasks.update_one(
+        {"_id": ObjectId(review.task_id)},
+        {"$set": {"status": "in_progress", "comments": review.comments}}
+    )
+    
+    if result.modified_count == 1:
+        return {"success": True, "message": "Task reassigned with feedback"}
+    raise HTTPException(status_code=404, detail="Task not found")
+
 
 # Timeout (seconds) for running user Python code
-RUN_PYTHON_TIMEOUT = 10
+RUN_PYTHON_TIMEOUT = 30
 
 
 @router.post("/api/run_python")
@@ -381,6 +430,97 @@ async def run_python(request: Request, body: RunPythonRequest):
             "exit_code": -1,
             "timeout": False,
         })
+
+
+@router.websocket("/api/run_python_ws")
+async def run_python_ws(websocket: WebSocket):
+    """
+    WebSocket endpoint for interactive Python execution.
+    Expects the first message to be the code. Subsequent messages are stdin.
+    """
+    await websocket.accept()
+    
+    # Receive initial code
+    try:
+        data = await websocket.receive_json()
+        code = (data.get("code") or "").strip()
+    except Exception:
+        await websocket.close(code=1003) # Unsupported Data
+        return
+
+    if not code:
+        await websocket.send_json({"type": "exit", "code": 0})
+        await websocket.close()
+        return
+
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False, encoding="utf-8") as f:
+        f.write(code)
+        tmp_path = f.name
+
+    process = None
+    try:
+        process = await asyncio.create_subprocess_exec(
+            sys.executable, tmp_path,
+            stdin=asyncio.subprocess.PIPE,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+            cwd=None,
+            env={**os.environ, "PYTHONUNBUFFERED": "1"}
+        )
+
+        async def stream_output(stream, stream_type):
+            while True:
+                line = await stream.read(4096)
+                if not line:
+                    break
+                await websocket.send_json({"type": "output", "stream": stream_type, "data": line.decode(errors="replace")})
+
+        async def handle_input():
+            try:
+                while True:
+                    data = await websocket.receive_json()
+                    if data.get("type") == "input":
+                        input_data = data.get("data", "")
+                        if process.stdin:
+                            process.stdin.write(input_data.encode())
+                            await process.stdin.drain()
+            except WebSocketDisconnect:
+                pass
+            except Exception:
+                pass
+
+        # Run stdout/stderr streaming and input handling concurrently
+        output_tasks = [
+            asyncio.create_task(stream_output(process.stdout, "stdout")),
+            asyncio.create_task(stream_output(process.stderr, "stderr"))
+        ]
+        input_task = asyncio.create_task(handle_input())
+
+        # Wait for the process to finish or a timeout
+        try:
+            await asyncio.wait_for(process.wait(), timeout=RUN_PYTHON_TIMEOUT)
+        except asyncio.TimeoutExpired:
+            if process:
+                process.terminate()
+            await websocket.send_json({"type": "timeout", "message": f"Execution timed out after {RUN_PYTHON_TIMEOUT} seconds."})
+
+        # Ensure output streams finish reading
+        for t in output_tasks:
+            await t
+        input_task.cancel()
+
+        await websocket.send_json({"type": "exit", "code": process.returncode})
+
+    except Exception as e:
+        await websocket.send_json({"type": "error", "message": str(e)})
+    finally:
+        if process and process.returncode is None:
+            process.kill()
+        try:
+            os.unlink(tmp_path)
+        except:
+            pass
+        await websocket.close()
 
 @router.get("/logout")
 async def logout(request: Request):
@@ -492,6 +632,8 @@ async def pause_task(request: Request, task_id: str):
     update_data = {"status": "paused"}
     if code is not None:
         update_data["code"] = code
+        # Save code history when pausing
+        await save_version(task_id, code, username)
     
     result = await db.tasks.update_one(
         {"_id": ObjectId(task_id)},
@@ -527,6 +669,28 @@ async def resume_task(request: Request, task_id: str):
         return JSONResponse(content={"success": True, "message": "Task resumed successfully"})
     
     raise HTTPException(status_code=404, detail="Task not found")
+
+@router.get("/api/tasks/{task_id}/history")
+async def get_task_history(request: Request, task_id: str):
+    """Fetch code history for a task."""
+    username = request.cookies.get("username")
+    if not username:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    
+    db = get_db()
+    cursor = db.code_history.find({"task_id": task_id}).sort("timestamp", -1)
+    history = await cursor.to_list(length=100)
+    
+    # Format history for frontend
+    formatted_history = []
+    for entry in history:
+        formatted_history.append({
+            "code": entry["code"],
+            "timestamp": entry["timestamp"].isoformat(),
+            "username": entry["username"]
+        })
+        
+    return {"history": formatted_history}
 
 @router.get("/api/developer_analytics")
 async def get_developer_analytics(request: Request):

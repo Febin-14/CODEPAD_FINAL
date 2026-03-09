@@ -52,3 +52,10 @@ class ChatMessage(BaseModel):
     sender_role: str  # 'manager' or 'developer'
     message: str
     created_at: Optional[str] = None  # ISO timestamp, set server-side
+
+class CodeHistory(BaseModel):
+    """Stored in MongoDB to keep track of previous versions of code for a task."""
+    task_id: str
+    code: str
+    timestamp: datetime
+    username: str

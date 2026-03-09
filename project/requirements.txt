@@ -6,3 +6,7 @@ openai>=1.0.0
 google-generativeai
 httpx
 python-dotenv
+
+websockets
+python-multipart
+jinja2

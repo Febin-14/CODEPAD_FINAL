@@ -16,18 +16,20 @@
 <body>
     <div class="app-wrapper">
 
-    <header class="top-bar">
+        <header class="top-bar">
             <div class="header-container">
                 <h1 class="brand-title">CodePad</h1>
                 <div class="profile-section">
                     <a href="/developer_analytics" class="nav-link">Developer Analytics</a>
                     <span class="greeting">Hello, <strong>{{ username }}</strong></span>
                     <div class="avatar-circle">{{ username[0].upper() }}</div>
-                    
+
                     <a href="/logout" class="logout-link">Logout</a>
-                    
-                    <button id="theme-toggle" class="theme-toggle" aria-label="Toggle Theme" title="Toggle Theme" style="background:none; border:none; cursor:pointer; display:flex; align-items:center; justify-content:center; padding: 6px; margin-left: 8px; border-radius: 50%; transition: background 0.2s;">
-                        <img src="/static/moon.png" id="theme-icon" alt="Theme Toggle" style="width:20px;height:20px;transition:transform 0.3s;filter:invert(0.8);">
+
+                    <button id="theme-toggle" class="theme-toggle" aria-label="Toggle Theme" title="Toggle Theme"
+                        style="background:none; border:none; cursor:pointer; display:flex; align-items:center; justify-content:center; padding: 6px; margin-left: 8px; border-radius: 50%; transition: background 0.2s;">
+                        <img src="/static/moon.png" id="theme-icon" alt="Theme Toggle"
+                            style="width:20px;height:20px;transition:transform 0.3s;filter:invert(0.8);">
                     </button>
                 </div>
             </div>
@@ -239,7 +241,29 @@
 
         <!-- Code View Modal -->
         <div id="codeModal" class="modal">
-            ...
+            <div class="modal-content"
+                style="max-width: 1000px; border-radius: 12px; border: 1px solid rgba(0, 0, 0, 0.2); box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);">
+                <div class="modal-header">
+                    <h3 id="modalTaskTitle">Task Code</h3>
+                    <span class="close-modal" onclick="closeCodeModal()">&times;</span>
+                </div>
+                <div class="modal-body" style="padding: 0;">
+                    <div id="monaco-editor-container" style="width: 100%; height: 500px;"></div>
+                </div>
+                <!-- Review Section -->
+                <div id="reviewSection" class="modal-review-section"
+                    style="display: none; padding: 20px; background: #252526; border-top: 1px solid #333;">
+                    <h4 class="review-header" style="color: #cccccc; margin-bottom: 12px; font-size: 1rem;">Reviewer
+                        Feedback</h4>
+                    <textarea id="reviewComments" class="review-comments-input"
+                        style="width: 100%; min-height: 80px; padding: 12px; border-radius: 4px; background: #1e1e1e; border: 1px solid #444; color: #cccccc; margin-bottom: 16px; resize: vertical;"
+                        placeholder="Type your feedback here... REQUIRED for reassigning."></textarea>
+                    <div class="review-actions" style="display: flex; gap: 12px; justify-content: flex-end;">
+                        <button type="button" class="approve-btn" onclick="approveTask()">Approve & Close Task</button>
+                        <button type="button" class="reject-btn" onclick="rejectTask()">Reassign to Developer</button>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <!-- Edit Project Modal -->
