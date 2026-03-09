@@ -18,17 +18,19 @@
 <body>
     <div class="app-wrapper">
 
-    <header class="top-bar">
+        <header class="top-bar">
             <div class="header-container">
                 <h1 class="brand-title">CodePad</h1>
                 <div class="profile-section">
                     <span class="greeting">Hello, <strong>{{ username }}</strong></span>
                     <div class="avatar-circle">{{ username[0].upper() }}</div>
-                    
+
                     <a href="/logout" class="logout-link">Logout</a>
-                    
-                    <button id="theme-toggle" class="theme-toggle" aria-label="Toggle Theme" title="Toggle Theme" style="background:none; border:none; cursor:pointer; display:flex; align-items:center; justify-content:center; padding: 6px; margin-left: 8px; border-radius: 50%; transition: background 0.2s;">
-                        <img src="/static/moon.png" id="theme-icon" alt="Theme Toggle" style="width:20px;height:20px;transition:transform 0.3s;filter:invert(0.8);">
+
+                    <button id="theme-toggle" class="theme-toggle" aria-label="Toggle Theme" title="Toggle Theme"
+                        style="background:none; border:none; cursor:pointer; display:flex; align-items:center; justify-content:center; padding: 6px; margin-left: 8px; border-radius: 50%; transition: background 0.2s;">
+                        <img src="/static/moon.png" id="theme-icon" alt="Theme Toggle"
+                            style="width:20px;height:20px;transition:transform 0.3s;filter:invert(0.8);">
                     </button>
                 </div>
             </div>
@@ -163,42 +165,85 @@
     <!-- Full Page Code Editor -->
     <div id="codeEditorPage"
         style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:var(--bg-base); z-index:1000;">
-        <div class="editor-header">
-            <div class="editor-header-content">
-                <div class="editor-task-info">
-                    <h3 id="editorTaskTitle" class="editor-title"></h3>
-                    <span id="editorTaskType" class="editor-badge"></span>
+        <div class="editor-header"
+            style="background: #f0f0f0; border-bottom: 1px solid #d1d1d1; padding: 10px 16px; display: flex; align-items: center; justify-content: space-between; width: 100%; box-sizing: border-box;">
+            <!-- Traffic Lights -->
+            <div style="display: flex; gap: 8px; width: 220px; align-items: center;">
+                <div onclick="document.getElementById('closeEditorBtn').click()"
+                    style="width: 12px; height: 12px; border-radius: 50%; background: #ff5f56; border: 1px solid #e0443e; cursor: pointer;">
                 </div>
-                <div class="editor-actions">
-                    <button id="aiAssistantBtn" class="editor-ai-btn" onclick="toggleAiPanel()">🤖 AI Assistant</button>
-                    <button id="runPythonBtn" class="editor-run-btn" style="display:none;">▶ Run</button>
-                    <button id="previewHtmlBtn" class="editor-preview-btn" style="display:none;">👁 Preview</button>
-                    <button id="pauseTaskEditorBtn" class="editor-pause-btn" style="display:none;">⏸ Pause</button>
-                    <button id="submitCodeBtn" class="editor-submit-btn">Complete & Submit</button>
-                    <button id="closeEditorBtn" class="editor-close-btn">Close</button>
+                <div
+                    style="width: 12px; height: 12px; border-radius: 50%; background: #ffbd2e; border: 1px solid #dea123;">
                 </div>
+                <div
+                    style="width: 12px; height: 12px; border-radius: 50%; background: #27c93f; border: 1px solid #1aab29;">
+                </div>
+            </div>
+            <!-- Title Area -->
+            <div class="editor-task-info"
+                style="flex-grow: 1; justify-content: center; display: flex; align-items: center; gap: 8px;">
+                <h3 id="editorTaskTitle" class="editor-title"
+                    style="color: #4A4A4A; font-size: 13px; font-weight: 600; margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+                </h3>
+                <span id="editorTaskType" class="editor-badge"
+                    style="background: rgba(0,0,0,0.05) !important; color: #666 !important; border: 1px solid rgba(0,0,0,0.1); padding: 2px 6px; font-size: 0.65rem; font-weight: 700; border-radius: 4px;"></span>
+            </div>
+            <!-- Actions Area -->
+            <div class="editor-actions"
+                style="width: 440px; justify-content: flex-end; display: flex; gap: 8px; align-items: center;">
+                <button id="aiAssistantBtn" class="editor-ai-btn" onclick="toggleAiPanel()"
+                    style="background: rgba(0,0,0,0.05); color: #333; border: 1px solid rgba(0,0,0,0.1); border-radius: 6px; padding: 4px 10px; font-size: 0.75rem; font-weight: 600; cursor: pointer; transition: all 0.2s;">🤖
+                    AI Assist</button>
+                <button id="runPythonBtn" class="editor-run-btn"
+                    style="display:none; background: #fff; color: #333; border: 1px solid rgba(0,0,0,0.1); border-radius: 6px; padding: 4px 10px; font-size: 0.75rem; font-weight: 600; cursor: pointer; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">▶
+                    Run</button>
+                <button id="previewHtmlBtn" class="editor-preview-btn"
+                    style="display:none; background: #fff; color: #333; border: 1px solid rgba(0,0,0,0.1); border-radius: 6px; padding: 4px 10px; font-size: 0.75rem; font-weight: 600; cursor: pointer; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">👁
+                    Preview</button>
+                <button id="pauseTaskEditorBtn" class="editor-pause-btn"
+                    style="display:none; background: #fff; color: #333; border: 1px solid rgba(0,0,0,0.1); border-radius: 6px; padding: 4px 10px; font-size: 0.75rem; font-weight: 600; cursor: pointer;">⏸
+                    Pause</button>
+                <button id="submitCodeBtn" class="editor-submit-btn"
+                    style="background: #4f46e5; color: #fff; border: none; border-radius: 6px; padding: 5px 14px; font-size: 0.75rem; font-weight: 600; cursor: pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">Submit</button>
+                <button id="closeEditorBtn" class="editor-close-btn" style="display: none;">Close</button>
             </div>
         </div>
         <div style="display: flex; height: calc(100vh - 80px);">
             <div id="editorMainArea"
                 style="display: flex; flex-direction: column; flex: 1; min-width: 0; transition: flex 0.3s cubic-bezier(.4,0,.2,1);">
                 <div id="monacoContainer" style="flex: 1; min-height: 0; width: 100%;"></div>
-                <div id="runOutputPanel"
-                    style="display: none; border-top: 1px solid var(--primary-200); background: #1e1e1e; color: #d4d4d4; font-family: monospace; font-size: 13px; padding: 12px; max-height: 200px; overflow: auto;">
-                    <div style="font-weight: 600; margin-bottom: 8px; color: #9cdcfe;">Output</div>
-                    <pre id="runOutputContent" style="margin: 0; white-space: pre-wrap; word-break: break-all;"></pre>
+                <div id="runOutputPanel" tabindex="0"
+                    style="display: none; border-top: 1px solid #d1d1d1; background: #ffffff; color: #000000; font-family: 'Menlo', 'Monaco', 'Courier New', monospace; font-size: 13px; padding: 12px; max-height: 250px; overflow: auto; outline: none;">
+                    <div
+                        style="font-weight: 600; margin-bottom: 8px; color: #666; font-family: -apple-system, sans-serif; font-size: 12px; border-bottom: 1px solid #eaeaea; padding-bottom: 4px;">
+                        Terminal Output</div>
+                    <pre id="runOutputContent"
+                        style="margin: 0; white-space: pre-wrap; word-break: break-all; display: inline;"></pre>
+                    <span id="terminalCursor"
+                        style="display: inline-block; width: 8px; height: 16px; background: #000000; vertical-align: middle; animation: blink 1s step-end infinite;"></span>
                 </div>
                 <div id="previewPanel"
-                    style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 2000; background: #fff;">
-                    <div
-                        style="display: flex; justify-content: space-between; align-items: center; padding: 10px 20px; background: #1e1e2e; border-bottom: 1px solid #333;">
-                        <span style="font-size: 0.9rem; font-weight: 600; color: #9cdcfe;">👁 Live Preview</span>
-                        <button onclick="closePreviewPanel()"
-                            style="background: linear-gradient(135deg, #ef4444, #dc2626); border: none; color: #fff; cursor: pointer; font-size: 0.8rem; padding: 6px 14px; border-radius: 6px; font-weight: 600;">✕
-                            Close Preview</button>
+                    style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 2000; background: #fff; flex-direction: column;">
+                    <div class="mac-window-header"
+                        style="display: flex; justify-content: space-between; align-items: center; padding: 10px 16px; background: #f0f0f0; border-bottom: 1px solid #d1d1d1; width: 100%; box-sizing: border-box;">
+                        <div style="display: flex; gap: 8px; width: 140px; align-items: center;">
+                            <div onclick="closePreviewPanel()"
+                                style="width: 12px; height: 12px; border-radius: 50%; background: #ff5f56; border: 1px solid #e0443e; cursor: pointer;">
+                            </div>
+                            <div
+                                style="width: 12px; height: 12px; border-radius: 50%; background: #ffbd2e; border: 1px solid #dea123;">
+                            </div>
+                            <div
+                                style="width: 12px; height: 12px; border-radius: 50%; background: #27c93f; border: 1px solid #1aab29;">
+                            </div>
+                        </div>
+                        <div
+                            style="flex-grow: 1; text-align: center; color: #4A4A4A; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 13px; font-weight: 600;">
+                            Live Preview
+                        </div>
+                        <div style="width: 140px;"></div>
                     </div>
-                    <iframe id="previewIframe"
-                        style="width: 100%; height: calc(100vh - 45px); border: none; background: #fff;"></iframe>
+                    <iframe id="previewIframe" style="width: 100%; flex: 1; border: none; background: #fff;"></iframe>
                 </div>
             </div>
 
@@ -218,6 +263,12 @@
     </div>
 
     <style>
+        @keyframes blink {
+            50% {
+                opacity: 0;
+            }
+        }
+
         /* Modal Styles */
         .modal-content {
             background: var(--bg-card);
@@ -835,6 +886,85 @@
         .ai-send-btn:hover {
             box-shadow: 0 0 10px rgba(99, 102, 241, 0.4);
         }
+
+        /* Dark Mode Overrides for Mac Window */
+        [data-theme="dark"] #runOutputPanel {
+            background: #1e1e1e !important;
+            border-top-color: #444 !important;
+        }
+
+        [data-theme="dark"] #runOutputPanel div {
+            color: #56ffd6 !important;
+            border-bottom-color: #333 !important;
+        }
+
+        [data-theme="dark"] #runOutputContent {
+            color: #e0e0e0 !important;
+        }
+
+        [data-theme="dark"] #terminalCursor {
+            background: #56ffd6 !important;
+        }
+
+        [data-theme="dark"] #codeEditorPage {
+            background: #1e1e1e !important;
+        }
+
+        [data-theme="dark"] .editor-header {
+            background: #2d2d2d !important;
+            border-bottom-color: #444 !important;
+        }
+
+        [data-theme="dark"] #editorTaskTitle {
+            color: #e0e0e0 !important;
+        }
+
+        [data-theme="dark"] #editorTaskType {
+            background: rgba(255, 255, 255, 0.1) !important;
+            color: #aaa !important;
+            border-color: rgba(255, 255, 255, 0.2) !important;
+        }
+
+        [data-theme="dark"] .editor-actions button:not(.editor-submit-btn):not(.active) {
+            background: rgba(255, 255, 255, 0.1) !important;
+            color: #e0e0e0 !important;
+            border-color: rgba(255, 255, 255, 0.2) !important;
+        }
+
+        [data-theme="dark"] .editor-actions button.active:not(.editor-submit-btn) {
+            background: rgba(99, 102, 241, 0.2) !important;
+            color: #fff !important;
+            border-color: rgba(99, 102, 241, 0.4) !important;
+        }
+
+        [data-theme="dark"] .ai-panel {
+            background: #1e1e1e !important;
+            border-left-color: #444 !important;
+        }
+
+        [data-theme="dark"] .ai-panel-header {
+            background: #2d2d2d !important;
+            border-bottom-color: #444 !important;
+        }
+
+        [data-theme="dark"] .ai-msg-typing {
+            background: #2d2d2d !important;
+        }
+
+        [data-theme="dark"] .ai-input {
+            background: #2d2d2d !important;
+            border-color: #444 !important;
+            color: #e0e0e0 !important;
+        }
+
+        [data-theme="dark"] .mac-window-header {
+            background: #2d2d2d !important;
+            border-bottom-color: #444 !important;
+        }
+
+        [data-theme="dark"] .mac-window-header div {
+            color: #e0e0e0 !important;
+        }
     </style>
 
     <script>
@@ -884,10 +1014,11 @@
             require.config({ paths: { 'vs': 'https://cdn.jsdelivr.net/npm/monaco-editor@0.45.0/min/vs' } });
             require(['vs/editor/editor.main'], function () {
                 if (monacoEditor) monacoEditor.dispose();
+                const currentTheme = document.documentElement.getAttribute('data-theme') || 'dark';
                 monacoEditor = monaco.editor.create(document.getElementById('monacoContainer'), {
                     value: initialCode,
                     language: taskType === 'frontend' ? 'html' : 'python',
-                    theme: 'vs-dark',
+                    theme: currentTheme === 'dark' ? 'vs-dark' : 'vs',
                     readOnly: isReadOnly,
                     automaticLayout: true,
                     fontSize: 14,
@@ -1161,34 +1292,73 @@
                 .catch(() => showFullPageEditor(title, type, '', isCompleted, taskStatus));
         };
 
-        document.getElementById('runPythonBtn').onclick = async function () {
+        let pythonRunWS = null;
+
+        document.getElementById('runPythonBtn').onclick = function () {
             if (!monacoEditor || currentTaskType !== 'backend') return;
+
+            if (pythonRunWS) {
+                pythonRunWS.close();
+                pythonRunWS = null;
+            }
+
             const code = monacoEditor.getValue();
             const panel = document.getElementById('runOutputPanel');
             const content = document.getElementById('runOutputContent');
-            content.textContent = 'Running...';
+
+            content.textContent = 'Connecting to interactive session...\n';
             panel.style.display = 'block';
-            try {
-                const res = await fetch('/api/run_python', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ code: code })
-                });
-                const data = await res.json().catch(() => ({}));
-                if (!res.ok) {
-                    content.textContent = 'Error: ' + (data.detail || 'Failed to run code');
-                    return;
+            panel.focus();
+
+            // Build WebSocket URL
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsUrl = `${protocol}//${window.location.host}/api/run_python_ws`;
+
+            pythonRunWS = new WebSocket(wsUrl);
+
+            pythonRunWS.onopen = () => {
+                content.textContent = ''; // Clear "Connecting..." message
+                pythonRunWS.send(JSON.stringify({ code: code }));
+            };
+
+            pythonRunWS.onmessage = (event) => {
+                const msg = JSON.parse(event.data);
+                if (msg.type === 'output') {
+                    content.textContent += msg.data;
+                    panel.scrollTop = panel.scrollHeight;
+                } else if (msg.type === 'timeout') {
+                    content.textContent += '\n\n' + msg.message + '\nNote: Interactive scripts (using input()) are not supported if they sit idle too long.';
+                } else if (msg.type === 'error') {
+                    content.textContent += '\n\nError: ' + msg.message;
+                } else if (msg.type === 'exit') {
+                    content.textContent += `\n\n[Process exited with code ${msg.code}]`;
+                    pythonRunWS = null;
                 }
-                let text = '';
-                if (data.stdout) text += data.stdout;
-                if (data.stderr) text += (text ? '\n' : '') + (data.stderr ? 'stderr: ' + data.stderr : '');
-                if (data.timeout) text = (text ? text + '\n' : '') + '(Timed out after 10s)';
-                if (!text) text = data.exit_code === 0 ? '(No output)' : 'Exit code: ' + data.exit_code;
-                content.textContent = text;
-            } catch (e) {
-                console.error(e);
-                content.textContent = 'Error: ' + (e.message || 'Failed to run code');
-            }
+            };
+
+            pythonRunWS.onclose = () => {
+                pythonRunWS = null;
+            };
+
+            pythonRunWS.onerror = (err) => {
+                content.textContent += '\n\nWebSocket Error. Connection failed.';
+                console.error('WS Error:', err);
+                pythonRunWS = null;
+            };
+
+            // Capture keyboard input
+            panel.onkeydown = (e) => {
+                if (!pythonRunWS || pythonRunWS.readyState !== WebSocket.OPEN) return;
+
+                if (e.key === 'Enter') {
+                    pythonRunWS.send(JSON.stringify({ type: 'input', data: '\n' }));
+                    content.textContent += '\n';
+                } else if (e.key.length === 1) {
+                    pythonRunWS.send(JSON.stringify({ type: 'input', data: e.key }));
+                    content.textContent += e.key;
+                }
+                panel.scrollTop = panel.scrollHeight;
+            };
         };
 
         document.getElementById('previewHtmlBtn').onclick = function () {
@@ -1197,11 +1367,7 @@
             const panel = document.getElementById('previewPanel');
             const iframe = document.getElementById('previewIframe');
             panel.style.display = 'block';
-            // Write HTML content into the iframe
-            const doc = iframe.contentDocument || iframe.contentWindow.document;
-            doc.open();
-            doc.write(code);
-            doc.close();
+            iframe.srcdoc = code || "<html><body><p style='color:#888; font-family:sans-serif; text-align:center; margin-top:100px;'>No content to preview</p></body></html>";
         };
 
         function closePreviewPanel() {
@@ -1400,6 +1566,18 @@
                 modal.style.display = "none";
             }
         };
+        // Listen for theme changes to update Monaco
+        const observer = new MutationObserver((mutations) => {
+            mutations.forEach((mutation) => {
+                if (mutation.attributeName === 'data-theme') {
+                    const newTheme = document.documentElement.getAttribute('data-theme');
+                    if (monacoEditor) {
+                        monaco.editor.setTheme(newTheme === 'dark' ? 'vs-dark' : 'vs');
+                    }
+                }
+            });
+        });
+        observer.observe(document.documentElement, { attributes: true });
     </script>
 
     <!-- Floating Chat Widget (outside app layout so fixed position works) -->

@@ -12,18 +12,20 @@
 <body>
     <div class="app-wrapper">
 
-    <header class="top-bar">
+        <header class="top-bar">
             <div class="header-container">
                 <h1 class="brand-title">CodePad</h1>
                 <div class="profile-section">
                     <a href="/dashboard" class="nav-link">Back to Dashboard</a>
                     <span class="greeting">Hello, <strong>{{ username }}</strong></span>
                     <div class="avatar-circle">{{ username[0].upper() }}</div>
-                    
+
                     <a href="/logout" class="logout-link">Logout</a>
-                    
-                    <button id="theme-toggle" class="theme-toggle" aria-label="Toggle Theme" title="Toggle Theme" style="background:none; border:none; cursor:pointer; display:flex; align-items:center; justify-content:center; padding: 6px; margin-left: 8px; border-radius: 50%; transition: background 0.2s;">
-                        <img src="/static/moon.png" id="theme-icon" alt="Theme Toggle" style="width:20px;height:20px;transition:transform 0.3s;filter:invert(0.8);">
+
+                    <button id="theme-toggle" class="theme-toggle" aria-label="Toggle Theme" title="Toggle Theme"
+                        style="background:none; border:none; cursor:pointer; display:flex; align-items:center; justify-content:center; padding: 6px; margin-left: 8px; border-radius: 50%; transition: background 0.2s;">
+                        <img src="/static/moon.png" id="theme-icon" alt="Theme Toggle"
+                            style="width:20px;height:20px;transition:transform 0.3s;filter:invert(0.8);">
                     </button>
                 </div>
             </div>
@@ -146,7 +148,12 @@
                                         </td>
                                         <td>
                                             <div class="action-cell-inner">
-                                                <a href="/task/{{ task._id }}" class="view-code-btn" title="View Code">
+                                                {% if task.status in ['submitted_for_review', 'done'] %}
+                                                <button type="button" class="view-code-btn"
+                                                    data-task-id="{{ task._id }}" data-task-title="{{ task.title }}"
+                                                    data-task-type="{{ task.type }}"
+                                                    onclick="openSubmittedCodeModal(this.dataset.taskId, this.dataset.taskTitle, this.dataset.taskType)"
+                                                    title="View Submitted Code">
                                                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
                                                         stroke="currentColor" stroke-width="2" stroke-linecap="round"
                                                         stroke-linejoin="round">
@@ -154,7 +161,20 @@
                                                         <polyline points="8 6 2 12 8 18"></polyline>
                                                     </svg>
                                                     Code
-                                                </a>
+                                                </button>
+                                                {% else %}
+                                                <button type="button" class="view-code-btn" disabled
+                                                    title="No code submitted yet"
+                                                    style="opacity: 0.35; cursor: not-allowed;">
+                                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+                                                        stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                                        stroke-linejoin="round">
+                                                        <polyline points="16 18 22 12 16 6"></polyline>
+                                                        <polyline points="8 6 2 12 8 18"></polyline>
+                                                    </svg>
+                                                    Code
+                                                </button>
+                                                {% endif %}
                                                 <button type="button" class="live-view-btn"
                                                     data-task-id="{{ task._id }}" data-task-title="{{ task.title }}"
                                                     data-task-type="{{ task.type }}"
@@ -222,14 +242,21 @@
 
     <!-- Live Code View Modal -->
     <div id="liveCodeModal" class="modal">
-        <div class="modal-content live-modal-content">
-            <div class="modal-header">
-                <div style="display: flex; align-items: center; gap: 12px;">
+        <div class="modal-content live-modal-content"
+            style="max-width: 1200px; border-radius: 12px; border: 1px solid rgba(0, 0, 0, 0.2); box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);">
+            <div class="mac-window-header">
+                <div class="mac-dots">
+                    <div class="mac-dot close" onclick="closeLiveCodeModal()"></div>
+                    <div class="mac-dot minimize"></div>
+                    <div class="mac-dot fullscreen"></div>
+                </div>
+                <div class="mac-title">
                     <span class="live-indicator" id="liveIndicator">🔴</span>
-                    <h3 id="liveModalTaskTitle">Live Code View</h3>
+                    <span id="liveModalTaskTitle">Live Code View</span>
                     <span class="live-status-badge" id="liveStatusBadge">LIVE</span>
                 </div>
-                <span class="close-modal" onclick="closeLiveCodeModal()">&times;</span>
+                <!-- Spacer for centering -->
+                <div style="width: 80px;"></div>
             </div>
             <div class="modal-body" style="padding: 0;">
                 <div id="live-monaco-editor-container" style="width: 100%; height: 600px;"></div>
@@ -237,7 +264,71 @@
         </div>
     </div>
 
+    <!-- Submitted Code View Modal -->
+    <div id="submittedCodeModal" class="modal">
+        <div class="modal-content live-modal-content"
+            style="max-width: 1200px; border-radius: 12px; border: 1px solid rgba(0, 0, 0, 0.2); box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);">
+            <div class="mac-window-header">
+                <div class="mac-dots">
+                    <div class="mac-dot close" onclick="closeSubmittedCodeModal()"></div>
+                    <div class="mac-dot minimize"></div>
+                    <div class="mac-dot fullscreen"></div>
+                </div>
+                <div class="mac-title">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#4a4a4a" stroke-width="2.5"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="20 6 9 17 4 12"></polyline>
+                    </svg>
+                    <span id="submittedModalTaskTitle">Submitted Code</span>
+                    <span
+                        style="background: rgba(0,0,0,0.05); color: #666; padding: 2px 6px; border-radius: 4px; font-size: 0.65rem; font-weight: 700; border: 1px solid rgba(0,0,0,0.1);">READ-ONLY</span>
+                </div>
+                <div style="display: flex; justify-content: flex-end; width: 180px;">
+                    <!-- Tab Switcher (Mac Style) -->
+                    <div id="submittedTabBar" class="mac-tab-bar">
+                        <button id="tabCodeBtn" onclick="switchSubmittedTab('code')" class="mac-tab-btn active">
+                            Code
+                        </button>
+                        <button id="tabPreviewBtn" onclick="switchSubmittedTab('preview')" class="mac-tab-btn">
+                            Preview
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <div id="submittedCodeLoading"
+                style="padding: 32px; text-align: center; color: #888; font-size: 0.9rem; display:none;">
+                Loading submitted code...
+            </div>
+            <div class="modal-body" style="padding: 0; position: relative;">
+                <!-- Code Editor Panel -->
+                <div id="submitted-code-panel" style="width: 100%; height: 600px;">
+                    <div id="submitted-monaco-editor-container" style="width: 100%; height: 600px;"></div>
+                </div>
+                <!-- Preview Panel (iframe) -->
+                <div id="submitted-preview-panel" style="width: 100%; height: 600px; display: none; background: #fff;">
+                    <iframe id="submitted-preview-iframe" style="width: 100%; height: 100%; border: none;"
+                        sandbox="allow-scripts" title="Code Preview">
+                    </iframe>
+                </div>
+                <!-- Run Output Panel (terminal) -->
+                <div id="submitted-run-panel" tabindex="0"
+                    style="width: 100%; height: 600px; display: none; background: #ffffff; overflow: auto; padding: 20px; outline: none; cursor: block;">
+                    <pre id="submittedRunContent"
+                        style="color: #000000; font-family: 'Menlo', 'Monaco', 'Courier New', monospace; font-size: 14px; white-space: pre-wrap; margin: 0; display: inline;"></pre>
+                    <span id="submittedTerminalCursor"
+                        style="display: inline-block; width: 8px; height: 16px; background: #000000; vertical-align: middle; animation: blink 1s step-end infinite;"></span>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <style>
+        @keyframes blink {
+            50% {
+                opacity: 0;
+            }
+        }
+
         .modal {
             display: none;
             position: fixed;
@@ -247,44 +338,208 @@
             width: 100%;
             height: 100%;
             overflow: auto;
-            background-color: rgba(0, 0, 0, 0.5);
+            background-color: rgba(9, 9, 11, 0.6);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
         }
 
         .modal-content {
-            background-color: #1e1e1e;
+            background-color: #ffffff;
             margin: 5% auto;
             padding: 0;
-            border: 1px solid #444;
+            border: 1px solid rgba(0, 0, 0, 0.2);
             width: 90%;
             max-width: 1000px;
-            border-radius: 8px;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+            border-radius: 12px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
             overflow: hidden;
             display: flex;
             flex-direction: column;
         }
 
-        .modal-header {
+        .mac-window-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 15px 20px;
-            background-color: #252526;
-            border-bottom: 1px solid #333;
-            color: #cccccc;
+            padding: 10px 16px;
+            background: #f0f0f0;
+            border-bottom: 1px solid #d1d1d1;
+            color: #333;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            border-top-left-radius: 11px;
+            border-top-right-radius: 11px;
+        }
+
+        .mac-dots {
+            display: flex;
+            gap: 8px;
+            width: 180px;
+            /* match the right side spacer to center title perfectly */
+        }
+
+        .mac-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+
+        .mac-dot.close {
+            background: #ff5f56;
+            border: 1px solid #e0443e;
+            cursor: pointer;
+        }
+
+        .mac-dot.minimize {
+            background: #ffbd2e;
+            border: 1px solid #dea123;
+        }
+
+        .mac-dot.fullscreen {
+            background: #27c93f;
+            border: 1px solid #1aab29;
+        }
+
+        .mac-title {
+            flex-grow: 1;
+            text-align: center;
+            font-size: 13px;
+            font-weight: 600;
+            color: #4A4A4A;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 8px;
         }
 
         .modal-body {
             padding: 0;
-            background-color: #1e1e1e;
+            background-color: #ffffff;
             flex-grow: 1;
+            border-bottom-left-radius: 11px;
+            border-bottom-right-radius: 11px;
+            overflow: hidden;
+        }
+
+        /* Dark Mode Overrides for Mac Window */
+        [data-theme="dark"] .modal-content {
+            background-color: #1e1e1e;
+            border-color: rgba(255, 255, 255, 0.1);
+        }
+
+        [data-theme="dark"] .mac-window-header {
+            background: #2d2d2d;
+            border-bottom-color: #444;
+            color: #e0e0e0;
+        }
+
+        [data-theme="dark"] .mac-title {
+            color: #e0e0e0;
+        }
+
+        [data-theme="dark"] .modal-body {
+            background-color: #1e1e1e;
+        }
+
+        [data-theme="dark"] #submitted-run-panel {
+            background: #1e1e1e !important;
+        }
+
+        [data-theme="dark"] #submittedRunContent {
+            color: #56ffd6 !important;
+        }
+
+        [data-theme="dark"] #submittedTerminalCursor {
+            background: #56ffd6 !important;
+        }
+
+        .mac-tab-bar {
+            display: flex;
+            gap: 2px;
+            background: rgba(0, 0, 0, 0.06);
+            border: 1px solid rgba(0, 0, 0, 0.1);
+            border-radius: 6px;
+            padding: 2px;
+        }
+
+        .mac-tab-btn {
+            padding: 4px 12px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            border: 1px solid transparent;
+            border-radius: 4px;
+            cursor: pointer;
+            background: transparent;
+            color: #666;
+            transition: all 0.2s;
+        }
+
+        .mac-tab-btn:hover {
+            background: rgba(0, 0, 0, 0.03);
+        }
+
+        .mac-tab-btn.active {
+            background: #fff;
+            color: #333;
+            border-color: rgba(0, 0, 0, 0.1);
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+        }
+
+        #tabCodeBtn.active {
+            background: #4f46e5 !important;
+            color: #fff !important;
+        }
+
+        #tabPreviewBtn.active {
+            background: #10b981 !important;
+            color: #fff !important;
+        }
+
+        /* Dark Mode */
+        [data-theme="dark"] .mac-tab-bar {
+            background: rgba(255, 255, 255, 0.1) !important;
+            border-color: rgba(255, 255, 255, 0.15) !important;
+        }
+
+        [data-theme="dark"] .mac-tab-btn {
+            color: #aaa !important;
+        }
+
+        [data-theme="dark"] .mac-tab-btn:hover {
+            background: rgba(255, 255, 255, 0.05) !important;
+        }
+
+        [data-theme="dark"] .mac-tab-btn.active {
+            border-color: transparent !important;
+        }
+
+        /* Specific active colors in dark mode (override general .active) */
+        [data-theme="dark"] #tabCodeBtn.active {
+            background: #4f46e5 !important;
+            color: #fff !important;
+        }
+
+        [data-theme="dark"] #tabPreviewBtn.active {
+            background: #10b981 !important;
+            color: #fff !important;
+        }
+
+        [data-theme="dark"] .mac-tab-btn:not(.active) {
+            background: transparent !important;
+            color: #aaa !important;
+        }
+
+        [data-theme="dark"] #submittedModalTaskTitle+span {
+            background: rgba(255, 255, 255, 0.1) !important;
+            color: #aaa !important;
+            border-color: rgba(255, 255, 255, 0.2) !important;
         }
 
         .close-modal {
-            color: #aaa;
+            color: #71717a;
             font-size: 28px;
             font-weight: bold;
             cursor: pointer;
+            transition: color 0.2s;
         }
 
         .close-modal:hover {
@@ -338,6 +593,199 @@
         let liveEditor = null;
         let managerWebSocket = null;
         let currentLiveTaskId = null;
+        let submittedEditor = null;
+
+        // ── Submitted Code Modal ──────────────────────────────────────
+        let currentSubmittedTaskType = 'backend';
+        let currentSubmittedCode = '';
+
+        function openSubmittedCodeModal(taskId, title, taskType) {
+            currentSubmittedTaskType = taskType;
+            document.getElementById('submittedModalTaskTitle').innerText = title + ' — Submitted Code';
+            document.getElementById('submittedCodeModal').style.display = 'block';
+            document.getElementById('submittedCodeLoading').style.display = 'block';
+
+            // Setup Tab based on task type
+            const previewBtn = document.getElementById('tabPreviewBtn');
+            if (taskType === 'frontend') {
+                previewBtn.innerHTML = '&#9654; Preview';
+                previewBtn.style.display = '';
+            } else {
+                previewBtn.innerHTML = '&#9654; Run';
+                previewBtn.style.display = '';
+            }
+
+            // Always start on Code tab
+            switchSubmittedTab('code', true);
+
+            const language = (taskType === 'frontend') ? 'html' : 'python';
+
+            fetch(`/get_task_code/${taskId}`)
+                .then(res => res.json())
+                .then(data => {
+                    currentSubmittedCode = data.code || '// No code submitted yet.';
+                    document.getElementById('submittedCodeLoading').style.display = 'none';
+
+                    // Update preview if already on preview tab
+                    const previewBtn = document.getElementById('tabPreviewBtn');
+                    if (previewBtn.classList.contains('active') && currentSubmittedTaskType === 'frontend') {
+                        updateSubmittedPreview();
+                    }
+
+                    require(['vs/editor/editor.main'], function () {
+                        const currentTheme = document.documentElement.getAttribute('data-theme') || 'dark';
+                        const monacoTheme = currentTheme === 'dark' ? 'vs-dark' : 'vs';
+                        if (!submittedEditor) {
+                            submittedEditor = monaco.editor.create(
+                                document.getElementById('submitted-monaco-editor-container'),
+                                {
+                                    value: currentSubmittedCode,
+                                    language: language,
+                                    theme: monacoTheme,
+                                    readOnly: true,
+                                    automaticLayout: true,
+                                    minimap: { enabled: true },
+                                    scrollBeyondLastLine: false,
+                                    fontSize: 14,
+                                    wordWrap: 'on'
+                                }
+                            );
+                        } else {
+                            const model = submittedEditor.getModel();
+                            monaco.editor.setModelLanguage(model, language);
+                            monaco.editor.setTheme(monacoTheme);
+                            model.setValue(currentSubmittedCode);
+                            setTimeout(() => submittedEditor.layout(), 50);
+                        }
+                    });
+                })
+                .catch(() => {
+                    document.getElementById('submittedCodeLoading').style.display = 'none';
+                    currentSubmittedCode = '// Error loading submitted code.';
+                    if (submittedEditor) {
+                        submittedEditor.getModel().setValue(currentSubmittedCode);
+                    }
+                });
+        }
+
+        function switchSubmittedTab(tab, silent) {
+            const codePanel = document.getElementById('submitted-code-panel');
+            const previewPanel = document.getElementById('submitted-preview-panel');
+            const runPanel = document.getElementById('submitted-run-panel');
+            const codeBtn = document.getElementById('tabCodeBtn');
+            const previewBtn = document.getElementById('tabPreviewBtn');
+
+            // Reset panels
+            codePanel.style.display = 'none';
+            previewPanel.style.display = 'none';
+            runPanel.style.display = 'none';
+
+            // Toggle classes only
+            codeBtn.classList.remove('active');
+            previewBtn.classList.remove('active');
+
+            if (tab === 'code') {
+                codePanel.style.display = 'block';
+                codeBtn.classList.add('active');
+                if (!silent && submittedEditor) setTimeout(() => submittedEditor.layout(), 50);
+            } else if (tab === 'preview') {
+                previewBtn.classList.add('active');
+                if (currentSubmittedTaskType === 'frontend') {
+                    previewPanel.style.display = 'block';
+                    updateSubmittedPreview();
+                } else {
+                    runPanel.style.display = 'block';
+                    if (!silent) runSubmittedPython();
+                }
+            }
+        }
+
+        function updateSubmittedPreview() {
+            const iframe = document.getElementById('submitted-preview-iframe');
+            if (!iframe) return;
+            const codeToPreview = (submittedEditor && submittedEditor.getModel())
+                ? submittedEditor.getValue()
+                : currentSubmittedCode;
+
+            iframe.srcdoc = codeToPreview || "<html><body><p style='color:#888; font-family:sans-serif; text-align:center; margin-top:100px;'>No content to preview</p></body></html>";
+        }
+
+        let submittedRunWS = null;
+
+        function runSubmittedPython() {
+            if (submittedRunWS) {
+                submittedRunWS.close();
+                submittedRunWS = null;
+            }
+
+            const content = document.getElementById('submittedRunContent');
+            const panel = document.getElementById('submitted-run-panel');
+            content.textContent = 'Connecting to interactive session...\n';
+            panel.focus();
+
+            const codeToRun = submittedEditor ? submittedEditor.getValue() : currentSubmittedCode;
+
+            // Build WebSocket URL
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsUrl = `${protocol}//${window.location.host}/api/run_python_ws`;
+
+            submittedRunWS = new WebSocket(wsUrl);
+
+            submittedRunWS.onopen = () => {
+                content.textContent = ''; // Clear "Connecting..." message
+                submittedRunWS.send(JSON.stringify({ code: codeToRun }));
+            };
+
+            submittedRunWS.onmessage = (event) => {
+                const msg = JSON.parse(event.data);
+                if (msg.type === 'output') {
+                    content.textContent += msg.data;
+                    panel.scrollTop = panel.scrollHeight;
+                } else if (msg.type === 'timeout') {
+                    content.textContent += '\n\n' + msg.message + '\nNote: Interactive scripts (using input()) are not supported if they sit idle too long.';
+                } else if (msg.type === 'error') {
+                    content.textContent += '\n\nError: ' + msg.message;
+                } else if (msg.type === 'exit') {
+                    content.textContent += `\n\n[Process exited with code ${msg.code}]`;
+                }
+            };
+
+            submittedRunWS.onclose = () => {
+                submittedRunWS = null;
+            };
+
+            submittedRunWS.onerror = (err) => {
+                content.textContent += '\n\nWebSocket Error. Connection failed.';
+                console.error('WS Error:', err);
+            };
+
+            // Capture keyboard input
+            panel.onkeydown = (e) => {
+                if (!submittedRunWS || submittedRunWS.readyState !== WebSocket.OPEN) return;
+
+                if (e.key === 'Enter') {
+                    submittedRunWS.send(JSON.stringify({ type: 'input', data: '\n' }));
+                    content.textContent += '\n';
+                } else if (e.key.length === 1) {
+                    submittedRunWS.send(JSON.stringify({ type: 'input', data: e.key }));
+                    content.textContent += e.key;
+                } else if (e.key === 'Backspace') {
+                    // Primitive backspace support (visual only)
+                    // In a real terminal we'd send \b, but here we just pop the last char if it's on current line
+                    // For now, let's keep it simple and just send the key if the backend supports it.
+                    // Python input() doesn't handle naked backspaces well over pipe without a proper PTY.
+                    // We'll skip complex backspace for this MVP.
+                }
+                panel.scrollTop = panel.scrollHeight;
+            };
+        }
+
+        function closeSubmittedCodeModal() {
+            document.getElementById('submittedCodeModal').style.display = 'none';
+            // Reset preview iframe
+            const iframe = document.getElementById('submitted-preview-iframe');
+            if (iframe) iframe.srcdoc = '';
+        }
 
         function openLiveCodeView(taskId, title, taskType) {
             currentLiveTaskId = taskId;
@@ -347,12 +795,14 @@
             var language = 'python';
             if (taskType === 'frontend') language = 'html';
 
+            const currentTheme = document.documentElement.getAttribute('data-theme') || 'dark';
+            const monacoTheme = currentTheme === 'dark' ? 'vs-dark' : 'vs';
             if (!liveEditor) {
                 require(['vs/editor/editor.main'], function () {
                     liveEditor = monaco.editor.create(document.getElementById('live-monaco-editor-container'), {
                         value: '// Connecting to live code view...\n// Waiting for code updates...',
                         language: language,
-                        theme: 'vs-dark',
+                        theme: monacoTheme,
                         readOnly: true,
                         automaticLayout: true,
                         minimap: { enabled: false },
@@ -364,6 +814,7 @@
             } else {
                 var model = liveEditor.getModel();
                 monaco.editor.setModelLanguage(model, language);
+                monaco.editor.setTheme(monacoTheme);
                 model.setValue('// Connecting to live code view...\n// Waiting for code updates...');
                 connectManagerWebSocket(taskId);
                 setTimeout(() => liveEditor.layout(), 50);
@@ -455,7 +906,23 @@
             if (event.target == document.getElementById('liveCodeModal')) {
                 closeLiveCodeModal();
             }
+            if (event.target == document.getElementById('submittedCodeModal')) {
+                closeSubmittedCodeModal();
+            }
         }
+
+        // Listen for theme changes to update Monaco
+        const observer = new MutationObserver((mutations) => {
+            mutations.forEach((mutation) => {
+                if (mutation.attributeName === 'data-theme') {
+                    const newTheme = document.documentElement.getAttribute('data-theme');
+                    const monacoTheme = newTheme === 'dark' ? 'vs-dark' : 'vs';
+                    if (submittedEditor) monaco.editor.setTheme(monacoTheme);
+                    if (liveEditor) monaco.editor.setTheme(monacoTheme);
+                }
+            });
+        });
+        observer.observe(document.documentElement, { attributes: true });
     </script>
 </body>
 
