@@ -13,12 +13,33 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.45.0/min/vs/loader.js"></script>
     <script src="{{ url_for('static', path='theme.js') }}"></script>
+    <script>
+        // Sets up team chat for this developer's first project (if any).
+        // Clicking a project in the sidebar switches the team channel.
+        {% if projects %}
+        window.currentProjectId = "{{ projects[0]._id }}";
+        {% else %}
+        window.currentProjectId = "";
+        {% endif %}
+    </script>
 </head>
 
 <body>
     <div class="app-wrapper">
 
         <header class="top-bar">
+            <style>
+                :root {
+                    --terminal-bg: #050816;
+                    --terminal-bg-all: #0b1020;
+                    --terminal-accent: #7b5cff;
+                    --terminal-accent-soft: rgba(123, 92, 255, 0.15);
+                    --terminal-text: #c4c8ff;
+                    --terminal-muted: #9aa0c6;
+                    --terminal-border: rgba(255, 255, 255, 0.06);
+                    --terminal-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
+                }
+            </style>
             <div class="header-container">
                 <h1 class="brand-title">CodePad</h1>
                 <div class="profile-section">
@@ -47,7 +68,9 @@
 
                     <div class="project-list">
                         {% for project in projects %}
-                        <div class="project-list-item" onclick="filterTasksByProject('{{ project.title }}', this)">
+                        <div class="project-list-item{% if loop.first %} active{% endif %}"
+                            data-project-id="{{ project._id }}"
+                            onclick="filterTasksByProject('{{ project.title }}', this); if(window.switchTeamProject) window.switchTeamProject('{{ project._id }}', '{{ project.title }}');">
                             <div class="project-list-info">
                                 <span class="project-list-name">{{ project.title }}</span>
                                 <span class="project-list-desc">{{ project.description or "No description" }}</span>
@@ -219,15 +242,44 @@
             <div id="editorMainArea"
                 style="display: flex; flex-direction: column; flex: 1; min-width: 0; transition: flex 0.3s cubic-bezier(.4,0,.2,1);">
                 <div id="monacoContainer" style="flex: 1; min-height: 0; width: 100%;"></div>
-                <div id="runOutputPanel" tabindex="0"
-                    style="display: none; border-top: 1px solid #d1d1d1; background: #ffffff; color: #000000; font-family: 'Menlo', 'Monaco', 'Courier New', monospace; font-size: 13px; padding: 12px; max-height: 250px; overflow: auto; outline: none;">
-                    <div
-                        style="font-weight: 600; margin-bottom: 8px; color: #666; font-family: -apple-system, sans-serif; font-size: 12px; border-bottom: 1px solid #eaeaea; padding-bottom: 4px;">
-                        Terminal Output</div>
-                    <pre id="runOutputContent"
-                        style="margin: 0; white-space: pre-wrap; word-break: break-all; display: inline;"></pre>
-                    <span id="terminalCursor"
-                        style="display: inline-block; width: 8px; height: 16px; background: #000000; vertical-align: middle; animation: blink 1s step-end infinite;"></span>
+                <!-- Terminal Modal -->
+                <div id="terminalModal"
+                    style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.4); backdrop-filter: blur(4px); z-index: 3000; align-items: center; justify-content: center;">
+                    <div id="runOutputPanel" tabindex="0"
+                        style="width: 85%; max-width: 850px; height: 500px; background: var(--terminal-bg); border: 1px solid var(--terminal-border); border-radius: 12px; box-shadow: var(--terminal-shadow); display: flex; flex-direction: column; overflow: hidden; outline: none; position: relative; animation: terminalPopup 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);">
+                        <!-- Mac-style Window Header -->
+                        <div
+                            style="background: rgba(255,255,255,0.02); border-bottom: 1px solid var(--terminal-border); padding: 14px 18px; display: flex; align-items: center; justify-content: space-between; user-select: none;">
+                            <div style="display: flex; gap: 9px; width: 60px;">
+                                <div onclick="closeTerminal()"
+                                    style="width: 12px; height: 12px; border-radius: 50%; background: #ff5f56; border: 1px solid rgba(0,0,0,0.1); cursor: pointer; transition: transform 0.2s;"
+                                    onmouseover="this.style.transform='scale(1.1)'"
+                                    onmouseout="this.style.transform='scale(1)'"></div>
+                                <div
+                                    style="width: 12px; height: 12px; border-radius: 50%; background: #ffbd2e; border: 1px solid rgba(0,0,0,0.1);">
+                                </div>
+                                <div
+                                    style="width: 12px; height: 12px; border-radius: 50%; background: #27c93f; border: 1px solid rgba(0,0,0,0.1);">
+                                </div>
+                            </div>
+                            <div
+                                style="color: var(--terminal-muted); font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.15em; font-family: -apple-system, sans-serif;">
+                                Terminal Session
+                            </div>
+                            <div style="width: 60px; text-align: right;">
+                                <span
+                                    style="font-size: 10px; color: var(--terminal-accent); font-weight: 600; opacity: 0.8;">BASH</span>
+                            </div>
+                        </div>
+                        <!-- Terminal Content -->
+                        <div id="terminalContentArea"
+                            style="flex: 1; padding: 20px; overflow: auto; scrollbar-width: thin; scrollbar-color: var(--terminal-border) transparent;">
+                            <pre id="runOutputContent"
+                                style="margin: 0; white-space: pre-wrap; word-break: break-all; display: inline; color: var(--terminal-text); font-family: 'Menlo', 'Monaco', 'Courier New', monospace; font-size: 14px; line-height: 1.5;"></pre>
+                            <span id="terminalCursor"
+                                style="display: inline-block; width: 8px; height: 18px; background: var(--terminal-accent); vertical-align: middle; animation: blink 1s step-end infinite; box-shadow: 0 0 10px var(--terminal-accent); margin-left: 2px;"></span>
+                        </div>
+                    </div>
                 </div>
                 <div id="previewPanel"
                     style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 2000; background: #fff; flex-direction: column;">
@@ -267,21 +319,29 @@
                     <span class="ai-panel-title">🤖 AI Assistant</span>
                     <button class="ai-panel-close" onclick="toggleAiPanel()">&times;</button>
                 </div>
+                <!-- AI messages and input should be here, but viewed segments suggest it's populated via JS or missing in snippet -->
+                <div id="aiMessages" class="ai-messages"></div>
+                <div class="ai-input-area">
+                    <textarea id="aiInput" class="ai-input" placeholder="Ask AI for help with your code..."
+                        rows="2"></textarea>
+                    <button id="aiSendBtn" class="ai-send-btn" onclick="sendAiMessage()">Send</button>
+                </div>
             </div>
-        </div>
 
-        <!-- History Side Panel -->
-        <div id="historyPanel" class="history-panel" style="display: none;">
-            <div class="history-panel-header">
-                <span class="history-panel-title">📜 Code History</span>
-                <button class="history-panel-close" onclick="toggleHistoryPanel()">&times;</button>
-            </div>
-            <div id="historyList" class="history-list">
-                <div style="padding: 20px; text-align: center; color: var(--text-muted);">
-                    Loading history...
+            <!-- History Side Panel -->
+            <div id="historyPanel" class="history-panel" style="display: none;">
+                <div class="history-panel-header">
+                    <span class="history-panel-title">📜 Code History</span>
+                    <button class="history-panel-close" onclick="toggleHistoryPanel()">&times;</button>
+                </div>
+                <div id="historyList" class="history-list">
+                    <div style="padding: 20px; text-align: center; color: var(--text-muted);">
+                        Loading history...
+                    </div>
                 </div>
             </div>
         </div>
+
     </div>
     </div>
 
@@ -1045,21 +1105,21 @@
 
         /* Dark Mode Overrides for Mac Window */
         [data-theme="dark"] #runOutputPanel {
-            background: #1e1e1e !important;
-            border-top-color: #444 !important;
+            background: var(--terminal-bg) !important;
+            border-top-color: var(--terminal-border) !important;
         }
 
         [data-theme="dark"] #runOutputPanel div {
-            color: #56ffd6 !important;
-            border-bottom-color: #333 !important;
+            color: var(--terminal-accent) !important;
+            border-bottom-color: var(--terminal-border) !important;
         }
 
         [data-theme="dark"] #runOutputContent {
-            color: #e0e0e0 !important;
+            color: var(--terminal-text) !important;
         }
 
         [data-theme="dark"] #terminalCursor {
-            background: #56ffd6 !important;
+            background: var(--terminal-accent) !important;
         }
 
         [data-theme="dark"] #codeEditorPage {
@@ -1120,6 +1180,18 @@
 
         [data-theme="dark"] .mac-window-header div {
             color: #e0e0e0 !important;
+        }
+
+        @keyframes terminalPopup {
+            from {
+                opacity: 0;
+                transform: scale(0.9) translateY(20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: scale(1) translateY(0);
+            }
         }
     </style>
 
@@ -1204,13 +1276,15 @@
             // Show pause button only if task is in_progress
             const pauseBtn = document.getElementById('pauseTaskEditorBtn');
             if (taskStatus === 'in_progress' && !isReadOnly) {
-                pauseBtn.style.display = 'block';
+                pauseBtn.style.display = 'inline-block';
             } else {
                 pauseBtn.style.display = 'none';
             }
 
             // Hide run output and preview panels when opening editor
-            document.getElementById('runOutputPanel').style.display = 'none';
+            if (document.getElementById('terminalModal')) {
+                document.getElementById('terminalModal').style.display = 'none';
+            }
             document.getElementById('previewPanel').style.display = 'none';
 
             document.getElementById('codeEditorPage').style.display = 'block';
@@ -1291,7 +1365,7 @@
                 const code = monacoEditor.getValue();
                 // We use the pause endpoint as it's a "silent" save to 'paused' status
                 try {
-                    await fetch(`/api/pause_task/${currentTaskId}`, {
+                    await fetch(`/api/save_task/${currentTaskId}`, {
                         method: "POST",
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ code: code, task_id: currentTaskId })
@@ -1304,7 +1378,9 @@
 
             document.getElementById('codeEditorPage').style.display = 'none';
             document.getElementById('previewPanel').style.display = 'none';
-            document.getElementById('runOutputPanel').style.display = 'none';
+            if (document.getElementById('terminalModal')) {
+                document.getElementById('terminalModal').style.display = 'none';
+            }
             document.body.style.overflow = 'auto';
 
             // Show the group chat toggle button again when the editor is closed
@@ -1343,7 +1419,7 @@
             const code = monacoEditor.getValue();
 
             try {
-                const res = await fetch(`/api/pause_task/${currentTaskId}`, {
+                const res = await fetch(`/api/save_task/${currentTaskId}`, {
                     method: "POST",
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ code: code, task_id: currentTaskId })
@@ -1570,10 +1646,11 @@
 
             const code = monacoEditor.getValue();
             const panel = document.getElementById('runOutputPanel');
+            const modal = document.getElementById('terminalModal');
             const content = document.getElementById('runOutputContent');
 
             content.textContent = 'Connecting to interactive session...\n';
-            panel.style.display = 'block';
+            modal.style.display = 'flex';
             panel.focus();
 
             // Build WebSocket URL
@@ -1587,10 +1664,20 @@
                 pythonRunWS.send(JSON.stringify({ code: code }));
             };
 
+            let lineBuffer = '';
+
             pythonRunWS.onmessage = (event) => {
                 const msg = JSON.parse(event.data);
                 if (msg.type === 'output') {
-                    content.textContent += msg.data;
+                    // Process backspaces in output if the backend sends them
+                    let rawData = msg.data;
+                    for (let char of rawData) {
+                        if (char === '\b') {
+                            content.textContent = content.textContent.slice(0, -1);
+                        } else {
+                            content.textContent += char;
+                        }
+                    }
                     panel.scrollTop = panel.scrollHeight;
                 } else if (msg.type === 'timeout') {
                     content.textContent += '\n\n' + msg.message + '\nNote: Interactive scripts (using input()) are not supported if they sit idle too long.';
@@ -1612,15 +1699,22 @@
                 pythonRunWS = null;
             };
 
-            // Capture keyboard input
+            // Capture keyboard input with backspace support
             panel.onkeydown = (e) => {
                 if (!pythonRunWS || pythonRunWS.readyState !== WebSocket.OPEN) return;
 
                 if (e.key === 'Enter') {
-                    pythonRunWS.send(JSON.stringify({ type: 'input', data: '\n' }));
+                    pythonRunWS.send(JSON.stringify({ type: 'input', data: lineBuffer + '\n' }));
                     content.textContent += '\n';
+                    lineBuffer = '';
+                } else if (e.key === 'Backspace') {
+                    if (lineBuffer.length > 0) {
+                        lineBuffer = lineBuffer.slice(0, -1);
+                        content.textContent = content.textContent.slice(0, -1);
+                    }
+                    e.preventDefault();
                 } else if (e.key.length === 1) {
-                    pythonRunWS.send(JSON.stringify({ type: 'input', data: e.key }));
+                    lineBuffer += e.key;
                     content.textContent += e.key;
                 }
                 panel.scrollTop = panel.scrollHeight;
@@ -1638,6 +1732,14 @@
 
         function closePreviewPanel() {
             document.getElementById('previewPanel').style.display = 'none';
+        }
+
+        function closeTerminal() {
+            if (pythonRunWS) {
+                pythonRunWS.close();
+                pythonRunWS = null;
+            }
+            document.getElementById('terminalModal').style.display = 'none';
         }
 
         // ---- AI Assistant Panel ----
@@ -1660,6 +1762,8 @@
                 panel.style.display = 'none';
                 btn.classList.remove('active');
             }
+            // Trigger Monaco layout recalc
+            if (monacoEditor) setTimeout(() => monacoEditor.layout(), 350);
         }
 
         async function loadHistory() {
@@ -1932,343 +2036,8 @@
         observer.observe(document.documentElement, { attributes: true });
     </script>
 
-    <!-- Floating Chat Widget (outside app layout so fixed position works) -->
-    <style>
-        #chatWidgetWrap {
-            position: fixed !important;
-            bottom: 24px !important;
-            right: 24px !important;
-            z-index: 9999 !important;
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-        }
+    {% include 'chat_widget.html' %}
 
-        #chatWidgetWrap .chat-toggle-btn {
-            position: relative;
-            width: 56px;
-            height: 56px;
-            border-radius: 50%;
-            background: linear-gradient(135deg, #0ea5e9, #0891b2);
-            color: #fff;
-            border: none;
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.5rem;
-            transition: transform 0.2s, box-shadow 0.2s;
-        }
-
-        #chatWidgetWrap .chat-toggle-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 20px rgba(14, 165, 233, 0.35);
-        }
-
-        #chatWidgetWrap .chat-toggle-btn .chat-badge {
-            position: absolute;
-            top: -4px;
-            right: -4px;
-            min-width: 20px;
-            height: 20px;
-            padding: 0 6px;
-            background: #ef4444;
-            color: white;
-            font-size: 0.7rem;
-            font-weight: 600;
-            border-radius: 10px;
-            display: none;
-            align-items: center;
-            justify-content: center;
-        }
-
-        #chatWidgetWrap .chat-toggle-btn.has-badge .chat-badge {
-            display: flex;
-        }
-
-        #chatWidgetWrap .chat-panel {
-            display: none;
-            position: absolute;
-            right: 0;
-            bottom: 64px;
-            width: 380px;
-            max-width: calc(100vw - 48px);
-            height: 480px;
-            max-height: calc(100vh - 120px);
-            background: #fff;
-            border-radius: 12px;
-            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
-            border: 1px solid #e2e8f0;
-            flex-direction: column;
-            overflow: hidden;
-        }
-
-        #chatWidgetWrap.chat-open .chat-panel {
-            display: flex !important;
-        }
-
-        #chatWidgetWrap .chat-panel-header {
-            padding: 12px 16px;
-            background: #f1f5f9;
-            border-bottom: 1px solid #e2e8f0;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-        }
-
-        #chatWidgetWrap .chat-panel-title {
-            font-size: 1rem;
-            font-weight: 600;
-            color: #1e293b;
-        }
-
-        #chatWidgetWrap .chat-panel-close {
-            background: none;
-            border: none;
-            color: #64748b;
-            font-size: 1.5rem;
-            cursor: pointer;
-            padding: 0 4px;
-            line-height: 1;
-        }
-
-        #chatWidgetWrap .chat-panel-close:hover {
-            color: #1e293b;
-        }
-
-        #chatWidgetWrap .chat-status {
-            font-size: 0.75rem;
-            color: #64748b;
-            padding: 6px 16px;
-            background: #f1f5f9;
-            border-bottom: 1px solid #e2e8f0;
-        }
-
-        #chatWidgetWrap .chat-messages {
-            flex: 1;
-            overflow-y: auto;
-            padding: 12px;
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-            background: #f8fafc;
-        }
-
-        #chatWidgetWrap .chat-msg {
-            max-width: 85%;
-            padding: 10px 14px;
-            border-radius: 12px;
-            font-size: 0.875rem;
-            line-height: 1.45;
-            word-break: break-word;
-        }
-
-        #chatWidgetWrap .chat-msg.msg-other {
-            align-self: flex-start;
-            background: #fff;
-            border: 1px solid #e2e8f0;
-            color: #1e293b;
-            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
-        }
-
-        #chatWidgetWrap .chat-msg.msg-self {
-            align-self: flex-end;
-            background: linear-gradient(135deg, #0ea5e9, #0891b2);
-            color: #fff;
-        }
-
-        #chatWidgetWrap .chat-msg-sender {
-            font-size: 0.7rem;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.03em;
-            margin-bottom: 4px;
-            opacity: 0.9;
-        }
-
-        #chatWidgetWrap .chat-msg.msg-other .chat-msg-sender {
-            color: #0891b2;
-        }
-
-        #chatWidgetWrap .chat-msg.msg-self .chat-msg-sender {
-            color: rgba(255, 255, 255, 0.95);
-        }
-
-        #chatWidgetWrap .chat-msg-time {
-            font-size: 0.7rem;
-            opacity: 0.75;
-            margin-top: 4px;
-        }
-
-        #chatWidgetWrap .chat-input-row {
-            padding: 12px;
-            border-top: 1px solid #e2e8f0;
-            background: #fff;
-            display: flex;
-            gap: 8px;
-            align-items: flex-end;
-        }
-
-        #chatWidgetWrap .chat-input {
-            flex: 1;
-            padding: 10px 14px;
-            border: 1.5px solid #cbd5e1;
-            border-radius: 8px;
-            font-size: 0.875rem;
-            font-family: inherit;
-            resize: none;
-            min-height: 42px;
-            max-height: 100px;
-        }
-
-        #chatWidgetWrap .chat-input:focus {
-            outline: none;
-            border-color: #0ea5e9;
-            box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.1);
-        }
-
-        #chatWidgetWrap .chat-send-btn {
-            padding: 10px 18px;
-            background: linear-gradient(135deg, #0ea5e9, #0891b2);
-            color: #fff;
-            border: none;
-            border-radius: 8px;
-            font-size: 0.875rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: transform 0.2s, box-shadow 0.2s;
-        }
-
-        #chatWidgetWrap .chat-send-btn:hover {
-            transform: translateY(-1px);
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-        }
-
-        #chatWidgetWrap .chat-send-btn:disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
-            transform: none;
-        }
-
-        #chatWidgetWrap .chat-mode-toggle {
-            display: flex;
-            gap: 0;
-            padding: 6px 12px;
-            background: #f1f5f9;
-            border-bottom: 1px solid #e2e8f0;
-        }
-
-        #chatWidgetWrap .chat-mode-btn {
-            flex: 1;
-            padding: 8px 12px;
-            border: 1px solid #cbd5e1;
-            background: #fff;
-            color: #64748b;
-            font-size: 0.8rem;
-            font-weight: 600;
-            cursor: pointer;
-            border-radius: 6px;
-            margin: 0 2px;
-            transition: background 0.2s, color 0.2s, border-color 0.2s;
-        }
-
-        #chatWidgetWrap .chat-mode-btn:first-child {
-            margin-left: 0;
-        }
-
-        #chatWidgetWrap .chat-mode-btn:last-child {
-            margin-right: 0;
-        }
-
-        #chatWidgetWrap .chat-mode-btn:hover {
-            background: #e2e8f0;
-            color: #1e293b;
-        }
-
-        #chatWidgetWrap .chat-mode-btn.chat-mode-active {
-            background: linear-gradient(135deg, #0ea5e9, #0891b2);
-            color: #fff;
-            border-color: #0891b2;
-        }
-
-        #chatWidgetWrap .chat-msg-typing .chat-msg-text {
-            font-style: italic;
-            opacity: 0.85;
-        }
-
-        #chatWidgetWrap .chat-voice-wrap {
-            flex-shrink: 0;
-            display: flex;
-            align-items: flex-end;
-        }
-
-        #chatWidgetWrap .chat-voice-btn {
-            width: 42px;
-            height: 42px;
-            min-width: 42px;
-            border-radius: 50%;
-            border: 1.5px solid #cbd5e1;
-            background: #fff;
-            color: #64748b;
-            font-size: 1.2rem;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: background 0.2s, color 0.2s, border-color 0.2s;
-        }
-
-        #chatWidgetWrap .chat-voice-btn:hover {
-            background: #f1f5f9;
-            color: #0ea5e9;
-            border-color: #0ea5e9;
-        }
-
-        #chatWidgetWrap .chat-voice-btn.chat-voice-recording {
-            background: #fee2e2;
-            color: #ef4444;
-            border-color: #ef4444;
-            animation: chat-voice-pulse 1s ease-in-out infinite;
-        }
-
-        @keyframes chat-voice-pulse {
-
-            0%,
-            100% {
-                opacity: 1;
-            }
-
-            50% {
-                opacity: 0.7;
-            }
-        }
-    </style>
-    <div id="chatWidgetWrap" class="chat-widget-wrap">
-        <button type="button" id="chatToggleBtn" class="chat-toggle-btn" title="Group chat" aria-label="Open chat">
-            <span class="chat-badge" id="chatUnreadBadge">0</span>
-            💬
-        </button>
-        <div class="chat-panel">
-            <div class="chat-panel-header">
-                <span class="chat-panel-title" id="chatPanelTitle">Team Chat</span>
-                <button type="button" id="chatPanelClose" class="chat-panel-close"
-                    aria-label="Close chat">&times;</button>
-            </div>
-            <div class="chat-mode-toggle">
-                <button type="button" id="chatModeTeam" class="chat-mode-btn chat-mode-active">Team</button>
-                <button type="button" id="chatModeAi" class="chat-mode-btn">AI</button>
-            </div>
-            <div class="chat-status" id="chatStatus">Connecting…</div>
-            <div class="chat-messages" id="chatMessages"></div>
-            <div class="chat-input-row">
-                <span id="chatVoiceWrap" class="chat-voice-wrap" style="display: none;">
-                    <button type="button" id="chatVoiceBtn" class="chat-voice-btn" title="Record voice message"
-                        aria-label="Record voice">🎤</button>
-                </span>
-                <textarea id="chatInput" class="chat-input" placeholder="Type a message…" rows="1"></textarea>
-                <button type="button" id="chatSendBtn" class="chat-send-btn">Send</button>
-            </div>
-        </div>
-    </div>
 </body>
 
 </html>

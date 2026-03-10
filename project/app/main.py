@@ -4,6 +4,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from app.models.db import connect, get_db, mongodb
 from app.routes import auth
+from app.routes.auth import migrate_usernames
 import asyncio
 import os
 from dotenv import load_dotenv
@@ -27,8 +28,10 @@ app.include_router(websocket_router.router)
 @app.on_event("startup")
 async def startup_db_client():
     connect()
-    # Seed users if empty
     db = get_db()
+    # Migrate legacy dev1/dev2 usernames first
+    await migrate_usernames(db)
+    # Seed users if empty
     if await db.users.count_documents({}) == 0:
         from app.routes.auth import seed_users
         await db.users.insert_many(seed_users)
@@ -73,15 +76,14 @@ async def dashboard(request: Request):
         # Fetch all developers to assign to projects
         developers_cursor = db.users.find({"role": {"$ne": "manager"}})
         developers = await developers_cursor.to_list(length=100)
-        # Only show active projects in the overview
-        active_projects = [p for p in projects if p.get("status", "active") != "completed"]
+        # Show all projects (including completed) in the overview
         return templates.TemplateResponse(
             "manager_dashboard.html",
             {
                 "request": request,
                 "username": username,
                 "tasks": tasks,
-                "projects": active_projects,
+                "projects": projects,
                 "developers": developers,
                 "github_repo": github_repo,
             }

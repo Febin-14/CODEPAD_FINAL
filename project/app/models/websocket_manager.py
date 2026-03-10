@@ -6,23 +6,40 @@ import json
 ChatConnection = Tuple[WebSocket, str, str]
 
 class ChatRoomManager:
-    """Manages WebSocket connections for the group chatroom (managers + developers)."""
+    """Manages WebSocket connections for project-scoped chat rooms (managers + developers)."""
     
     def __init__(self):
-        self.connections: List[ChatConnection] = []
+        # Map of project_id -> list of (websocket, username, role)
+        # Use 'global' for the project-wide team chat
+        self.rooms: Dict[str, List[ChatConnection]] = {}
     
-    async def connect(self, websocket: WebSocket, username: str, role: str):
+    async def connect(self, websocket: WebSocket, username: str, role: str, project_id: str = "global"):
         await websocket.accept()
-        self.connections.append((websocket, username, role))
+        if project_id not in self.rooms:
+            self.rooms[project_id] = []
+        self.rooms[project_id].append((websocket, username, role))
     
-    def disconnect(self, websocket: WebSocket):
-        self.connections = [(ws, u, r) for (ws, u, r) in self.connections if ws != websocket]
+    def disconnect(self, websocket: WebSocket, project_id: str = None):
+        if project_id:
+            if project_id in self.rooms:
+                self.rooms[project_id] = [(ws, u, r) for (ws, u, r) in self.rooms[project_id] if ws != websocket]
+                if not self.rooms[project_id]:
+                    del self.rooms[project_id]
+        else:
+            # Search all rooms if project_id is not known
+            for pid in list(self.rooms.keys()):
+                self.rooms[pid] = [(ws, u, r) for (ws, u, r) in self.rooms[pid] if ws != websocket]
+                if not self.rooms[pid]:
+                    del self.rooms[pid]
     
-    async def broadcast(self, message: dict, exclude_websocket: WebSocket = None):
-        """Send message to all connected clients, optionally excluding one."""
+    async def broadcast(self, message: dict, project_id: str = "global", exclude_websocket: WebSocket = None):
+        """Send message to all clients in a specific project room."""
+        if project_id not in self.rooms:
+            return
+            
         disconnected = []
         payload = json.dumps(message)
-        for ws, _, _ in self.connections:
+        for ws, _, _ in self.rooms[project_id]:
             if ws == exclude_websocket:
                 continue
             try:
@@ -30,7 +47,7 @@ class ChatRoomManager:
             except Exception:
                 disconnected.append(ws)
         for ws in disconnected:
-            self.disconnect(ws)
+            self.disconnect(ws, project_id)
 
 class WebSocketManager:
     """Manages WebSocket connections for live code viewing"""

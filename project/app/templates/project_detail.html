@@ -5,8 +5,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ project.title }} – Project</title>
-    <link rel="stylesheet" href="{{ url_for('static', path='style.css') }}?v=2">
+    <link rel="stylesheet" href="{{ url_for('static', path='style.css') }}?v=3">
     <script src="{{ url_for('static', path='theme.js') }}"></script>
+    <script src="{{ url_for('static', path='chat.js') }}"></script>
+    <script>
+        window.currentProjectId = "{{ project._id }}";
+    </script>
 </head>
 
 <body>
@@ -55,13 +59,13 @@
                                 {{ (project.status or 'active')|capitalize }}
                             </span>
                             {% if project.status != 'completed' %}
-                            <form action="/api/projects/{{ project._id }}/complete" method="post"
-                                onsubmit="return confirm('Mark this project as completed?');" style="margin: 0;">
-                                <button type="submit" class="submit-button"
-                                    style="background: linear-gradient(135deg, #10b981, #059669); padding: 10px 18px; font-size: 0.85rem; white-space: nowrap; font-weight: 600; box-shadow: 0 4px 12px rgba(16,185,129,0.3); border-radius: 8px;">
-                                    Mark as Completed
-                                </button>
-                            </form>
+                            <button type="button" class="submit-button"
+                                style="background: linear-gradient(135deg, #10b981, #059669); padding: 10px 18px; font-size: 0.85rem; white-space: nowrap; font-weight: 600; box-shadow: 0 4px 12px rgba(16,185,129,0.3); border-radius: 8px;"
+                                onclick="openCompleteProjectModal('{{ project._id }}', '{{ project.title|escape }}')">
+                                Mark as Completed
+                            </button>
+                            <form id="complete-form-{{ project._id }}" action="/api/projects/{{ project._id }}/complete"
+                                method="post" style="display: none;"></form>
                             {% endif %}
                         </div>
                     </div>
@@ -604,6 +608,29 @@
         }
     </style>
 
+    <!-- Complete Project Confirmation Modal -->
+    <div id="completeProjectModal" class="modal">
+        <div class="modal-content" style="max-width: 450px; border-radius: 12px; border: 1px solid #059669;">
+            <div class="modal-header" style="background-color: #022c22; border-bottom: 1px solid #10b981;">
+                <h3 style="color: #10b981; margin: 0;">Complete Project</h3>
+                <span class="close-modal" onclick="closeCompleteProjectModal()">&times;</span>
+            </div>
+            <div class="modal-body" style="padding: 24px;">
+                <p style="color: #e5e5e5; font-size: 1.05rem; margin-bottom: 24px;">
+                    Are you sure you want to mark <strong id="completeProjectName" style="color: white;"></strong> as
+                    completed?
+                </p>
+                <div style="display: flex; justify-content: flex-end; gap: 12px;">
+                    <button type="button" class="view-code-btn" style="background-color: #4b5563;"
+                        onclick="closeCompleteProjectModal()">Cancel</button>
+                    <button type="button" class="submit-button"
+                        style="background: linear-gradient(135deg, #10b981, #059669); padding: 10px 18px; color: white; border: none; border-radius: 8px; cursor: pointer;"
+                        onclick="confirmCompleteProject()">Yes, Complete Project</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script>var require = { paths: { 'vs': 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.45.0/min/vs' } };</script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.45.0/min/vs/loader.min.js"></script>
     <script>
@@ -616,6 +643,25 @@
         let currentSubmittedTaskType = 'backend';
         let currentSubmittedCode = '';
         let currentReviewTaskId = null;
+
+        let projectToCompleteId = null;
+
+        function openCompleteProjectModal(projectId, projectTitle) {
+            projectToCompleteId = projectId;
+            document.getElementById('completeProjectName').textContent = projectTitle;
+            document.getElementById('completeProjectModal').style.display = 'block';
+        }
+
+        function closeCompleteProjectModal() {
+            projectToCompleteId = null;
+            document.getElementById('completeProjectModal').style.display = 'none';
+        }
+
+        function confirmCompleteProject() {
+            if (projectToCompleteId) {
+                document.getElementById('complete-form-' + projectToCompleteId).submit();
+            }
+        }
 
         function openSubmittedCodeModal(taskId, title, taskType, status) {
             currentReviewTaskId = taskId;
@@ -1006,6 +1052,8 @@
         });
         observer.observe(document.documentElement, { attributes: true });
     </script>
+    {% include 'chat_widget.html' %}
+
 </body>
 
 </html>

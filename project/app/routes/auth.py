@@ -123,18 +123,35 @@ seed_users = [
         "description": "Project manager with experience in agile methodologies and team leadership."
     },
     {
-        "username": "dev1",
+        "username": "frontend",
         "password": "dev123",
         "role": "frontend developer",
         "description": "Frontend developer with expertise in HTML, CSS, JavaScript, and React."
     },
     {
-        "username": "dev2",
+        "username": "backend",
         "password": "dev123",
         "role": "backend developer",
         "description": "Backend developer with expertise in Python, FastAPI, and MongoDB."
     },
 ]
+
+async def migrate_usernames(db):
+    """Rename legacy dev1 -> frontend and dev2 -> backend across all collections."""
+    renames = [("dev1", "frontend"), ("dev2", "backend")]
+    for old, new in renames:
+        user = await db.users.find_one({"username": old})
+        if user:
+            await db.users.update_one({"username": old}, {"$set": {"username": new}})
+            await db.tasks.update_many({"assigned_to": old}, {"$set": {"assigned_to": new}})
+            await db.projects.update_many(
+                {"assigned_developers": old},
+                {"$set": {"assigned_developers.$[elem]": new}},
+                array_filters=[{"elem": {"$eq": old}}]
+            )
+            await db.chat_messages.update_many({"sender_username": old}, {"$set": {"sender_username": new}})
+            await db.developer_sessions.update_many({"username": old}, {"$set": {"username": new}})
+            print(f"[migrate] Renamed user '{old}' -> '{new}' in all collections.")
 
 @router.post("/login")
 async def login(request: Request, username: str = Form(...), password: str = Form(...), role: str = Form(...)):
@@ -459,21 +476,30 @@ async def run_python_ws(websocket: WebSocket):
 
     process = None
     try:
-        process = await asyncio.create_subprocess_exec(
-            sys.executable, tmp_path,
-            stdin=asyncio.subprocess.PIPE,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE,
+        import subprocess
+        process = subprocess.Popen(
+            [sys.executable, tmp_path],
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
             cwd=None,
-            env={**os.environ, "PYTHONUNBUFFERED": "1"}
+            env={**os.environ, "PYTHONUNBUFFERED": "1"},
+            bufsize=0
         )
+
+        loop = asyncio.get_running_loop()
 
         async def stream_output(stream, stream_type):
             while True:
-                line = await stream.read(4096)
-                if not line:
+                try:
+                    # Using read1() if available (otherwise read) for non-blocking partial reads
+                    read_func = getattr(stream, 'read1', stream.read)
+                    chunk = await loop.run_in_executor(None, read_func, 4096)
+                    if not chunk:
+                        break
+                    await websocket.send_json({"type": "output", "stream": stream_type, "data": chunk.decode(errors="replace")})
+                except Exception:
                     break
-                await websocket.send_json({"type": "output", "stream": stream_type, "data": line.decode(errors="replace")})
 
         async def handle_input():
             try:
@@ -482,8 +508,11 @@ async def run_python_ws(websocket: WebSocket):
                     if data.get("type") == "input":
                         input_data = data.get("data", "")
                         if process.stdin:
-                            process.stdin.write(input_data.encode())
-                            await process.stdin.drain()
+                            try:
+                                process.stdin.write(input_data.encode())
+                                process.stdin.flush()
+                            except Exception:
+                                pass
             except WebSocketDisconnect:
                 pass
             except Exception:
@@ -497,24 +526,30 @@ async def run_python_ws(websocket: WebSocket):
         input_task = asyncio.create_task(handle_input())
 
         # Wait for the process to finish or a timeout
+        def wait_process():
+            return process.wait()
+
         try:
-            await asyncio.wait_for(process.wait(), timeout=RUN_PYTHON_TIMEOUT)
+            returncode = await asyncio.wait_for(loop.run_in_executor(None, wait_process), timeout=RUN_PYTHON_TIMEOUT)
         except asyncio.TimeoutExpired:
             if process:
                 process.terminate()
             await websocket.send_json({"type": "timeout", "message": f"Execution timed out after {RUN_PYTHON_TIMEOUT} seconds."})
+            returncode = None
 
-        # Ensure output streams finish reading
-        for t in output_tasks:
-            await t
+        # Ensure output streams finish reading (give them a little time)
+        await asyncio.wait(output_tasks, timeout=1.0)
         input_task.cancel()
 
-        await websocket.send_json({"type": "exit", "code": process.returncode})
+        if returncode is not None:
+            await websocket.send_json({"type": "exit", "code": returncode})
 
     except Exception as e:
-        await websocket.send_json({"type": "error", "message": str(e)})
+        import traceback
+        traceback.print_exc()
+        await websocket.send_json({"type": "error", "message": str(e) or repr(e)})
     finally:
-        if process and process.returncode is None:
+        if process and getattr(process, 'poll', lambda: 1)() is None:
             process.kill()
         try:
             os.unlink(tmp_path)
@@ -605,6 +640,34 @@ async def reject_task(request: Request, review: TaskReview):
         return JSONResponse(content={"success": True, "message": "Task rejected and reassigned with comments"})
     
     raise HTTPException(status_code=404, detail="Task not found")
+
+@router.post("/api/save_task/{task_id}")
+async def save_task(request: Request, task_id: str):
+    username = request.cookies.get("username")
+    if not username:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    
+    db = get_db()
+    task = await db.tasks.find_one({"_id": ObjectId(task_id), "assigned_to": username})
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found or not assigned to you")
+    
+    try:
+        body = await request.json()
+        code = body.get("code", None)
+    except:
+        code = None
+    
+    if code is not None:
+        await db.tasks.update_one(
+            {"_id": ObjectId(task_id)},
+            {"$set": {"code": code}}
+        )
+        # Save code history when explicitly saving
+        await save_version(task_id, code, username)
+        return JSONResponse(content={"success": True, "message": "Progress saved successfully"})
+    
+    return JSONResponse(content={"success": False, "message": "No code provided to save"})
 
 @router.post("/api/pause_task/{task_id}")
 async def pause_task(request: Request, task_id: str):

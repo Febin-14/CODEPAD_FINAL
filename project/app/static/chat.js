@@ -1,14 +1,28 @@
-(function() {
+(function () {
+    // ─── State ───────────────────────────────────────────────────────────────
     var currentUsername = null;
-    var chatWs = null;
-    var unreadCount = 0;
-    var currentMode = 'team'; // 'team' | 'ai'
-    var teamMessages = [];
-    var aiMessages = [];
+    var currentRole = null;
+
+    // One WebSocket connection for team (project)
+    var teamWs = null;
+
+    // Message stores keyed per channel
+    var messageStore = { team: [] };
+
+    // Active display channel
+    var activeChannel = 'team';
+    // Active mode: 'chat' | 'ai'
+    var currentMode = 'chat';
+
+    var unreadTeam = 0;
+
     var mediaRecorder = null;
     var recordingStream = null;
     var recordingChunks = [];
 
+    var aiMessages = [];
+
+    // ─── Helpers ─────────────────────────────────────────────────────────────
     function getCookie(name) {
         var match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
         return match ? decodeURIComponent(match[2]) : null;
@@ -19,14 +33,11 @@
         try {
             var d = new Date(iso);
             var now = new Date();
-            var sameDay = d.toDateString() === now.toDateString();
-            if (sameDay) {
+            if (d.toDateString() === now.toDateString())
                 return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-            }
-            return d.toLocaleDateString([], { month: 'short', day: 'numeric' }) + ' ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-        } catch (e) {
-            return '';
-        }
+            return d.toLocaleDateString([], { month: 'short', day: 'numeric' }) + ' ' +
+                d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        } catch (e) { return ''; }
     }
 
     function escapeHtml(s) {
@@ -36,9 +47,30 @@
         return div.innerHTML;
     }
 
-    function appendMessageToContainer(data, isSelf) {
-        var container = document.getElementById('chatMessages');
-        if (!container) return;
+    // ─── UI helpers ──────────────────────────────────────────────────────────
+    function setStatus(text) {
+        var el = document.getElementById('chatStatus');
+        if (el) el.textContent = text;
+    }
+
+    function updateBadge() {
+        var total = unreadTeam;
+        var badge = document.getElementById('chatUnreadBadge');
+        var btn = document.getElementById('chatToggleBtn');
+        if (!badge || !btn) return;
+        if (total > 0) {
+            badge.textContent = total > 99 ? '99+' : total;
+            btn.classList.add('has-badge');
+        } else {
+            badge.textContent = '0';
+            btn.classList.remove('has-badge');
+        }
+        // Mini counter
+        var tbadge = document.getElementById('chatTeamBadge');
+        if (tbadge) { tbadge.textContent = unreadTeam > 0 ? unreadTeam : ''; tbadge.style.display = unreadTeam > 0 ? 'inline' : 'none'; }
+    }
+
+    function appendMsgEl(data, isSelf, container) {
         var div = document.createElement('div');
         div.className = 'chat-msg ' + (isSelf ? 'msg-self' : 'msg-other');
         var senderLabel = data.sender_username || '';
@@ -49,112 +81,148 @@
         container.scrollTop = container.scrollHeight;
     }
 
-    function appendMessage(data, isSelf) {
-        appendMessageToContainer(data, isSelf);
-    }
-
     function renderMessages() {
         var container = document.getElementById('chatMessages');
         if (!container) return;
         container.innerHTML = '';
-        var list = currentMode === 'team' ? teamMessages : aiMessages;
-        list.forEach(function(m) {
-            var isSelf = m.sender_username === currentUsername;
-            appendMessageToContainer(m, isSelf);
-        });
+        if (currentMode === 'ai') {
+            aiMessages.forEach(function (m) {
+                var isSelf = m.sender_username === currentUsername;
+                appendMsgEl(m, isSelf, container);
+            });
+        } else {
+            var list = messageStore[activeChannel] || [];
+            list.forEach(function (m) {
+                var isSelf = m.sender_username === currentUsername;
+                appendMsgEl(m, isSelf, container);
+            });
+        }
         container.scrollTop = container.scrollHeight;
     }
 
-    function setStatus(text) {
-        var el = document.getElementById('chatStatus');
-        if (el) el.textContent = text;
+    // ─── WebSocket connections ────────────────────────────────────────────────
+    function wsUrl(projectId) {
+        var proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        return proto + '//' + window.location.host + '/ws/chat?project_id=' + projectId;
+    }
+
+    function connectTeam(projectId) {
+        if (!projectId) return;
+        if (teamWs && (teamWs.readyState === WebSocket.OPEN || teamWs.readyState === WebSocket.CONNECTING)) return;
+        teamWs = new WebSocket(wsUrl(projectId));
+        teamWs.onopen = function () {
+            loadHistory('team', projectId);
+            if (activeChannel === 'team' && currentMode === 'chat') setStatus('Connected · Team Chat');
+        };
+        teamWs.onmessage = function (ev) { handleIncoming(ev, 'team'); };
+        teamWs.onclose = function (ev) {
+            // code 4003 = not a project member (server rejected)
+            if (ev.code === 4003) {
+                if (activeChannel === 'team' && currentMode === 'chat')
+                    setStatus('⚠️ Not a member of this project\'s team chat');
+                return; // do not retry
+            }
+            setTimeout(function () { connectTeam(window.currentProjectId); }, 3000);
+        };
+        teamWs.onerror = function () { /* handled by onclose */ };
+    }
+
+    function handleIncoming(ev, channel) {
+        var data;
+        try { data = JSON.parse(ev.data); } catch (e) { return; }
+        if (data.type !== 'message') return;
+        messageStore[channel].push(data);
+
+        if (currentMode === 'chat' && isOpen) {
+            var container = document.getElementById('chatMessages');
+            if (container) {
+                var isSelf = data.sender_username === currentUsername;
+                appendMsgEl(data, isSelf, container);
+            }
+        } else {
+            // increment unread
+            unreadTeam++;
+            updateBadge();
+        }
+    }
+
+    // ─── History loading ──────────────────────────────────────────────────────
+    function loadHistory(channel, projectId) {
+        var pid = projectId || window.currentProjectId;
+        fetch('/api/chat/messages?limit=80&project_id=' + pid)
+            .then(function (r) { return r.ok ? r.json() : Promise.reject(); })
+            .then(function (d) {
+                messageStore[channel] = d.messages || [];
+                if (currentMode === 'chat' && activeChannel === channel) renderMessages();
+            })
+            .catch(function () {
+                messageStore[channel] = [];
+            });
+    }
+
+    // ─── Channel / Mode switching ─────────────────────────────────────────────
+    function switchChannel(channel) {
+        activeChannel = 'team'; // Only team remains
+        unreadTeam = 0;
+        updateBadge();
+
+        var title = document.getElementById('chatPanelTitle');
+        if (title) title.textContent = 'Team Chat';
+
+        var label = 'Team Chat';
+        if (teamWs && teamWs.readyState === WebSocket.OPEN) setStatus('Connected · ' + label);
+        else if (teamWs && teamWs.readyState === WebSocket.CONNECTING) setStatus('Connecting…');
+        else setStatus('Not a member of this project\'s team chat');
+
+        renderMessages();
     }
 
     function setMode(mode) {
         currentMode = mode;
-        var teamBtn = document.getElementById('chatModeTeam');
+        var chatBtn = document.getElementById('chatModeChat');
         var aiBtn = document.getElementById('chatModeAi');
-        if (teamBtn) teamBtn.classList.toggle('chat-mode-active', mode === 'team');
+        if (chatBtn) chatBtn.classList.toggle('chat-mode-active', mode === 'chat');
         if (aiBtn) aiBtn.classList.toggle('chat-mode-active', mode === 'ai');
+
         var title = document.getElementById('chatPanelTitle');
-        if (title) title.textContent = mode === 'team' ? 'Team Chat' : 'AI Assistant';
-        var placeholder = document.getElementById('chatInput');
-        if (placeholder) placeholder.placeholder = mode === 'team' ? 'Type a message…' : 'Ask me anything…';
+        if (title) {
+            if (mode === 'ai') title.textContent = 'AI Assistant';
+            else title.textContent = 'Team Chat';
+        }
+
+        var tabRow = document.getElementById('chatChannelTabRow');
+        if (tabRow) tabRow.style.display = 'none';
+
+        var input = document.getElementById('chatInput');
+        if (input) input.placeholder = mode === 'chat' ? 'Type a message…' : 'Ask me anything…';
+
         var voiceWrap = document.getElementById('chatVoiceWrap');
         if (voiceWrap) voiceWrap.style.display = mode === 'ai' ? '' : 'none';
-        if (mode === 'team' && mediaRecorder && mediaRecorder.state === 'recording') stopRecording();
+
+        if (mode === 'chat' && mediaRecorder && mediaRecorder.state === 'recording') stopRecording();
+
+        if (mode === 'ai') {
+            setStatus('AI Assistant · GPT-4o');
+        } else {
+            var label = 'Team Chat';
+            setStatus(teamWs && teamWs.readyState === WebSocket.OPEN ? 'Connected · ' + label : 'Connecting…');
+        }
         renderMessages();
     }
 
-    function connectChat() {
-        currentUsername = getCookie('username');
-        if (!currentUsername) return;
-
-        var protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        var wsUrl = protocol + '//' + window.location.host + '/ws/chat';
-        chatWs = new WebSocket(wsUrl);
-
-        chatWs.onopen = function() {
-            if (currentMode === 'team') setStatus('Connected · Group chat');
-        };
-        chatWs.onmessage = function(event) {
-            var data;
-            try {
-                data = JSON.parse(event.data);
-            } catch (e) { return; }
-            if (data.type === 'message') {
-                teamMessages.push(data);
-                if (currentMode === 'team') {
-                    var isSelf = data.sender_username === currentUsername;
-                    appendMessage(data, isSelf);
-                }
-                var wrap = document.getElementById('chatWidgetWrap');
-                if (wrap && !wrap.classList.contains('chat-open')) {
-                    unreadCount++;
-                    var badge = document.getElementById('chatUnreadBadge');
-                    if (badge) {
-                        badge.textContent = unreadCount > 99 ? '99+' : unreadCount;
-                        document.getElementById('chatToggleBtn').classList.add('has-badge');
-                    }
-                }
-            }
-        };
-        chatWs.onclose = function() {
-            if (currentMode === 'team') setStatus('Disconnected. Reconnecting…');
-            setTimeout(connectChat, 3000);
-        };
-        chatWs.onerror = function() {
-            if (currentMode === 'team') setStatus('Connection error');
-        };
-    }
-
-    function loadTeamHistory() {
-        fetch('/api/chat/messages?limit=80')
-            .then(function(r) { return r.ok ? r.json() : Promise.reject(); })
-            .then(function(data) {
-                teamMessages = data.messages || [];
-                if (currentMode === 'team') renderMessages();
-            })
-            .catch(function() {
-                teamMessages = [];
-                if (currentMode === 'team') renderMessages();
-            });
-    }
-
+    // ─── Open / Close ─────────────────────────────────────────────────────────
     function openChat() {
         var wrap = document.getElementById('chatWidgetWrap');
         if (wrap) wrap.classList.add('chat-open');
-        unreadCount = 0;
-        var badge = document.getElementById('chatUnreadBadge');
-        if (badge) badge.textContent = '0';
-        document.getElementById('chatToggleBtn').classList.remove('has-badge');
-        if (currentMode === 'team') {
-            loadTeamHistory();
-            setStatus(chatWs && chatWs.readyState === WebSocket.OPEN ? 'Connected · Group chat' : 'Connecting…');
-        } else {
+        unreadTeam = 0;
+        updateBadge();
+        loadHistory(activeChannel);
+        var label = 'Team Chat';
+        if (currentMode === 'chat')
+            setStatus(teamWs && teamWs.readyState === WebSocket.OPEN ? 'Connected · ' + label : 'Connecting…');
+        else
             setStatus('AI Assistant · GPT-4o');
-            renderMessages();
-        }
+        renderMessages();
     }
 
     function closeChat() {
@@ -162,15 +230,19 @@
         if (wrap) wrap.classList.remove('chat-open');
     }
 
+    // ─── Send ─────────────────────────────────────────────────────────────────
     function sendMessage() {
         var input = document.getElementById('chatInput');
         if (!input) return;
         var text = (input.value || '').trim();
         if (!text) return;
 
-        if (currentMode === 'team') {
-            if (!chatWs || chatWs.readyState !== WebSocket.OPEN) return;
-            chatWs.send(JSON.stringify({ type: 'message', text: text }));
+        if (currentMode === 'chat') {
+            if (!teamWs || teamWs.readyState !== WebSocket.OPEN) {
+                setStatus('⚠️ Not connected – cannot send');
+                return;
+            }
+            teamWs.send(JSON.stringify({ type: 'message', text: text }));
             input.value = '';
             return;
         }
@@ -196,80 +268,57 @@
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ message: text })
         })
-            .then(function(r) { return r.json(); })
-            .then(function(data) {
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
                 var el = document.getElementById(typingId);
                 if (el) el.remove();
                 var reply = (data.reply || 'No response.').trim();
-                var aiMsg = { sender_username: 'AI', sender_role: 'assistant', message: reply, created_at: new Date().toISOString() };
-                aiMessages.push(aiMsg);
+                aiMessages.push({ sender_username: 'AI', sender_role: 'assistant', message: reply, created_at: new Date().toISOString() });
                 renderMessages();
             })
-            .catch(function(err) {
+            .catch(function () {
                 var el = document.getElementById(typingId);
                 if (el) el.remove();
-                var aiMsg = { sender_username: 'AI', sender_role: 'assistant', message: 'Sorry, something went wrong. Please try again.', created_at: new Date().toISOString() };
-                aiMessages.push(aiMsg);
+                aiMessages.push({ sender_username: 'AI', sender_role: 'assistant', message: 'Sorry, something went wrong.', created_at: new Date().toISOString() });
                 renderMessages();
             });
     }
 
+    // ─── Voice recording ──────────────────────────────────────────────────────
     function stopRecording() {
-        if (mediaRecorder && mediaRecorder.state === 'recording') {
-            mediaRecorder.stop();
-        }
-        if (recordingStream) {
-            recordingStream.getTracks().forEach(function(t) { t.stop(); });
-            recordingStream = null;
-        }
+        if (mediaRecorder && mediaRecorder.state === 'recording') mediaRecorder.stop();
+        if (recordingStream) { recordingStream.getTracks().forEach(function (t) { t.stop(); }); recordingStream = null; }
         mediaRecorder = null;
         var btn = document.getElementById('chatVoiceBtn');
         if (btn) { btn.classList.remove('chat-voice-recording'); btn.title = 'Record voice message'; }
     }
 
     function startRecording() {
-        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-            alert('Microphone access is not supported in this browser.');
-            return;
-        }
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { alert('Microphone not supported in this browser.'); return; }
         recordingChunks = [];
         navigator.mediaDevices.getUserMedia({ audio: true })
-            .then(function(stream) {
+            .then(function (stream) {
                 recordingStream = stream;
                 var mime = MediaRecorder.isTypeSupported('audio/webm;codecs=opus') ? 'audio/webm;codecs=opus' : 'audio/webm';
-                try {
-                    mediaRecorder = new MediaRecorder(stream);
-                } catch (e) {
-                    stream.getTracks().forEach(function(t) { t.stop(); });
-                    alert('Recording not supported: ' + e.message);
-                    return;
-                }
-                mediaRecorder.ondataavailable = function(e) { if (e.data.size) recordingChunks.push(e.data); };
-                mediaRecorder.onstop = function() {
-                    stream.getTracks().forEach(function(t) { t.stop(); });
-                    recordingStream = null;
+                try { mediaRecorder = new MediaRecorder(stream); } catch (e) { stream.getTracks().forEach(function (t) { t.stop(); }); alert('Recording not supported: ' + e.message); return; }
+                mediaRecorder.ondataavailable = function (e) { if (e.data.size) recordingChunks.push(e.data); };
+                mediaRecorder.onstop = function () {
+                    stream.getTracks().forEach(function (t) { t.stop(); }); recordingStream = null;
                     var btn = document.getElementById('chatVoiceBtn');
                     if (btn) { btn.classList.remove('chat-voice-recording'); btn.title = 'Record voice message'; }
-                    if (recordingChunks.length === 0) return;
-                    var blob = new Blob(recordingChunks, { type: mime });
-                    sendVoiceToAi(blob);
+                    if (!recordingChunks.length) return;
+                    sendVoiceToAi(new Blob(recordingChunks, { type: mime }));
                 };
                 mediaRecorder.start(200);
                 var btn = document.getElementById('chatVoiceBtn');
                 if (btn) { btn.classList.add('chat-voice-recording'); btn.title = 'Stop recording'; }
             })
-            .catch(function(err) {
-                alert('Microphone access denied or failed: ' + (err.message || 'Unknown error'));
-            });
+            .catch(function (err) { alert('Microphone access denied: ' + (err.message || 'Unknown error')); });
     }
 
     function toggleVoiceRecording() {
         if (currentMode !== 'ai') return;
-        var btn = document.getElementById('chatVoiceBtn');
-        if (mediaRecorder && mediaRecorder.state === 'recording') {
-            stopRecording();
-            return;
-        }
+        if (mediaRecorder && mediaRecorder.state === 'recording') { stopRecording(); return; }
         startRecording();
     }
 
@@ -278,76 +327,95 @@
         var typingId = 'ai-typing-' + Date.now();
         var container = document.getElementById('chatMessages');
         var typingDiv = document.createElement('div');
-        typingDiv.id = typingId;
-        typingDiv.className = 'chat-msg msg-other chat-msg-typing';
+        typingDiv.id = typingId; typingDiv.className = 'chat-msg msg-other chat-msg-typing';
         typingDiv.innerHTML = '<div class="chat-msg-sender">AI</div><div class="chat-msg-text">Listening & thinking…</div>';
-        container.appendChild(typingDiv);
-        container.scrollTop = container.scrollHeight;
-
+        container.appendChild(typingDiv); container.scrollTop = container.scrollHeight;
         var fd = new FormData();
         fd.append('audio', audioBlob, 'voice.webm');
         fetch('/api/chat/ai/voice', { method: 'POST', body: fd })
-            .then(function(r) { return r.json(); })
-            .then(function(data) {
-                var el = document.getElementById(typingId);
-                if (el) el.remove();
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                var el = document.getElementById(typingId); if (el) el.remove();
                 var transcript = (data.transcript || '').trim();
                 var reply = (data.reply || '').trim();
-                if (transcript) {
-                    var userMsg = { sender_username: currentUsername, sender_role: 'user', message: transcript, created_at: now };
-                    aiMessages.push(userMsg);
-                }
-                if (reply) {
-                    var aiMsg = { sender_username: 'AI', sender_role: 'assistant', message: reply, created_at: new Date().toISOString() };
-                    aiMessages.push(aiMsg);
-                }
+                if (transcript) aiMessages.push({ sender_username: currentUsername, sender_role: 'user', message: transcript, created_at: now });
+                if (reply) aiMessages.push({ sender_username: 'AI', sender_role: 'assistant', message: reply, created_at: new Date().toISOString() });
                 renderMessages();
             })
-            .catch(function(err) {
-                var el = document.getElementById(typingId);
-                if (el) el.remove();
-                var aiMsg = { sender_username: 'AI', sender_role: 'assistant', message: 'Voice request failed. Please try again or type your message.', created_at: new Date().toISOString() };
-                aiMessages.push(aiMsg);
+            .catch(function () {
+                var el = document.getElementById(typingId); if (el) el.remove();
+                aiMessages.push({ sender_username: 'AI', sender_role: 'assistant', message: 'Voice request failed.', created_at: new Date().toISOString() });
                 renderMessages();
             });
     }
 
+    // ─── Init ─────────────────────────────────────────────────────────────────
+    function buildChannelTabs() {
+        // No longer rendering Global / Team tabs
+    }
+
     function initChatWidget() {
         currentUsername = getCookie('username');
+        currentRole = getCookie('role');
         if (!currentUsername) return;
+
+        buildChannelTabs();
 
         var toggleBtn = document.getElementById('chatToggleBtn');
         var closeBtn = document.getElementById('chatPanelClose');
         var sendBtn = document.getElementById('chatSendBtn');
         var input = document.getElementById('chatInput');
-        var modeTeam = document.getElementById('chatModeTeam');
+        var modeChat = document.getElementById('chatModeChat');
         var modeAi = document.getElementById('chatModeAi');
+        var voiceBtn = document.getElementById('chatVoiceBtn');
 
-        if (toggleBtn) toggleBtn.addEventListener('click', function() {
+        if (toggleBtn) toggleBtn.addEventListener('click', function () {
             var wrap = document.getElementById('chatWidgetWrap');
-            if (wrap && wrap.classList.contains('chat-open')) closeChat();
-            else openChat();
+            if (wrap && wrap.classList.contains('chat-open')) closeChat(); else openChat();
         });
         if (closeBtn) closeBtn.addEventListener('click', closeChat);
         if (sendBtn) sendBtn.addEventListener('click', sendMessage);
         if (input) {
-            input.addEventListener('keydown', function(e) {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault();
-                    sendMessage();
-                }
+            input.addEventListener('keydown', function (e) {
+                if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
             });
         }
-        if (modeTeam) modeTeam.addEventListener('click', function() { setMode('team'); setStatus(chatWs && chatWs.readyState === WebSocket.OPEN ? 'Connected · Group chat' : 'Connecting…'); });
-        if (modeAi) modeAi.addEventListener('click', function() { setMode('ai'); setStatus('AI Assistant · GPT-4o'); renderMessages(); });
-        var voiceBtn = document.getElementById('chatVoiceBtn');
+        if (modeChat) modeChat.addEventListener('click', function () { setMode('chat'); });
+        if (modeAi) modeAi.addEventListener('click', function () { setMode('ai'); });
         if (voiceBtn) voiceBtn.addEventListener('click', toggleVoiceRecording);
 
-        setMode('team');
+        // Connect team channel (if project is active)
+        if (window.currentProjectId) connectTeam(window.currentProjectId);
+
+        setMode('chat');
         var voiceWrap = document.getElementById('chatVoiceWrap');
         if (voiceWrap) voiceWrap.style.display = 'none';
-        connectChat();
     }
+
+    // ─── Public API ───────────────────────────────────────────────────────────
+    // Called by developer dashboard when switching the active project in the sidebar.
+    window.switchTeamProject = function (projectId, projectTitle) {
+        if (!projectId) return;
+        // Close old team connection
+        if (teamWs) {
+            teamWs.onclose = null; // prevent reconnect loop
+            teamWs.close();
+            teamWs = null;
+        }
+        // Reset team message store
+        messageStore.team = [];
+        unreadTeam = 0;
+        updateBadge();
+        // Switch channel completely connects to team project connection
+        window.currentProjectId = projectId;
+        connectTeam(projectId);
+
+        // If team channel is active, reload history + show
+        if (activeChannel === 'team') {
+            renderMessages();
+            setStatus('Connecting to Team Chat…');
+        }
+    };
 
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', initChatWidget);

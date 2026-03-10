@@ -11,6 +11,9 @@
     <!-- Monaco Editor Loader -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.36.1/min/vs/loader.min.js"></script>
     <script src="{{ url_for('static', path='theme.js') }}"></script>
+    <script>
+        window.currentProjectId = "";
+    </script>
 </head>
 
 <body>
@@ -201,12 +204,15 @@
                                                     title="Edit Project">
                                                     Edit
                                                 </button>
-                                                <form action="/api/delete_project/{{ project._id }}" method="post"
-                                                    onsubmit="return confirm('WARNING: Are you sure you want to delete this project? ALL tasks inside this project will also be PERMANENTLY deleted.');"
-                                                    style="margin: 0; display: inline-block;">
-                                                    <button type="submit" class="delete-btn" title="Delete Project">
-                                                        &times;
-                                                    </button>
+                                                <button type="button" class="delete-btn" title="Delete Project"
+                                                    style="background: #ef4444; color: white; border-radius: 4px; border: none; padding: 4px 8px;"
+                                                    onclick="openDeleteProjectModal('{{ project._id }}', '{{ project.title|escape }}')">
+                                                    &times;
+                                                </button>
+                                                <!-- Hidden form for actual submission -->
+                                                <form id="delete-form-{{ project._id }}"
+                                                    action="/api/delete_project/{{ project._id }}" method="post"
+                                                    style="display: none;">
                                                 </form>
                                             </div>
                                         </td>
@@ -363,6 +369,32 @@
                             <button type="button" class="reject-btn" onclick="closeEditTaskModal()">Cancel</button>
                         </div>
                     </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Delete Project Confirmation Modal -->
+        <div id="deleteProjectModal" class="modal">
+            <div class="modal-content" style="max-width: 450px; border-radius: 12px;">
+                <div class="modal-header" style="background-color: #3f1a1a; border-bottom: 1px solid #ef4444;">
+                    <h3 style="color: #ef4444; margin: 0;">Delete Project</h3>
+                    <span class="close-modal" onclick="closeDeleteProjectModal()">&times;</span>
+                </div>
+                <div class="modal-body" style="padding: 24px;">
+                    <p style="color: #e5e5e5; font-size: 1.05rem; margin-bottom: 16px;">
+                        Are you sure you want to delete <strong id="deleteProjectName" style="color: white;"></strong>?
+                    </p>
+                    <p
+                        style="color: #ef4444; font-size: 0.9rem; margin-bottom: 24px; padding: 12px; background: rgba(239, 68, 68, 0.1); border-left: 4px solid #ef4444;">
+                        <strong>WARNING:</strong> All tasks inside this project will also be PERMANENTLY deleted. This
+                        action cannot be undone.
+                    </p>
+                    <div style="display: flex; justify-content: flex-end; gap: 12px;">
+                        <button type="button" class="view-code-btn" style="background-color: #4b5563;"
+                            onclick="closeDeleteProjectModal()">Cancel</button>
+                        <button type="button" class="reject-btn" onclick="confirmDeleteProject()">Yes, Delete
+                            Project</button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -906,6 +938,26 @@
                 });
             }
 
+            let projectToDeleteId = null;
+
+            function openDeleteProjectModal(projectId, projectTitle) {
+                projectToDeleteId = projectId;
+                document.getElementById('deleteProjectName').textContent = projectTitle;
+                document.getElementById('deleteProjectModal').style.display = 'block';
+            }
+
+            function closeDeleteProjectModal() {
+                projectToDeleteId = null;
+                document.getElementById('deleteProjectModal').style.display = 'none';
+            }
+
+            function confirmDeleteProject() {
+                if (projectToDeleteId) {
+                    document.getElementById('delete-form-' + projectToDeleteId).submit();
+                }
+            }
+
+
             function openCodeModal(taskId, title, codeId, taskType) {
                 currentReviewTaskId = taskId;
                 document.getElementById('modalTaskTitle').innerText = 'Code for: ' + title;
@@ -1165,343 +1217,8 @@
         </script>
     </div>
 
-    <!-- Floating Chat Widget (outside app layout so fixed position works) -->
-    <style>
-        #chatWidgetWrap {
-            position: fixed !important;
-            bottom: 24px !important;
-            right: 24px !important;
-            z-index: 9999 !important;
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-        }
+    {% include 'chat_widget.html' %}
 
-        #chatWidgetWrap .chat-toggle-btn {
-            position: relative;
-            width: 56px;
-            height: 56px;
-            border-radius: 50%;
-            background: linear-gradient(135deg, #0ea5e9, #0891b2);
-            color: #fff;
-            border: none;
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.5rem;
-            transition: transform 0.2s, box-shadow 0.2s;
-        }
-
-        #chatWidgetWrap .chat-toggle-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 20px rgba(14, 165, 233, 0.35);
-        }
-
-        #chatWidgetWrap .chat-toggle-btn .chat-badge {
-            position: absolute;
-            top: -4px;
-            right: -4px;
-            min-width: 20px;
-            height: 20px;
-            padding: 0 6px;
-            background: #ef4444;
-            color: white;
-            font-size: 0.7rem;
-            font-weight: 600;
-            border-radius: 10px;
-            display: none;
-            align-items: center;
-            justify-content: center;
-        }
-
-        #chatWidgetWrap .chat-toggle-btn.has-badge .chat-badge {
-            display: flex;
-        }
-
-        #chatWidgetWrap .chat-panel {
-            display: none;
-            position: absolute;
-            right: 0;
-            bottom: 64px;
-            width: 380px;
-            max-width: calc(100vw - 48px);
-            height: 480px;
-            max-height: calc(100vh - 120px);
-            background: #fff;
-            border-radius: 12px;
-            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
-            border: 1px solid #e2e8f0;
-            flex-direction: column;
-            overflow: hidden;
-        }
-
-        #chatWidgetWrap.chat-open .chat-panel {
-            display: flex !important;
-        }
-
-        #chatWidgetWrap .chat-panel-header {
-            padding: 12px 16px;
-            background: #f1f5f9;
-            border-bottom: 1px solid #e2e8f0;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-        }
-
-        #chatWidgetWrap .chat-panel-title {
-            font-size: 1rem;
-            font-weight: 600;
-            color: #1e293b;
-        }
-
-        #chatWidgetWrap .chat-panel-close {
-            background: none;
-            border: none;
-            color: #64748b;
-            font-size: 1.5rem;
-            cursor: pointer;
-            padding: 0 4px;
-            line-height: 1;
-        }
-
-        #chatWidgetWrap .chat-panel-close:hover {
-            color: #1e293b;
-        }
-
-        #chatWidgetWrap .chat-status {
-            font-size: 0.75rem;
-            color: #64748b;
-            padding: 6px 16px;
-            background: #f1f5f9;
-            border-bottom: 1px solid #e2e8f0;
-        }
-
-        #chatWidgetWrap .chat-messages {
-            flex: 1;
-            overflow-y: auto;
-            padding: 12px;
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-            background: #f8fafc;
-        }
-
-        #chatWidgetWrap .chat-msg {
-            max-width: 85%;
-            padding: 10px 14px;
-            border-radius: 12px;
-            font-size: 0.875rem;
-            line-height: 1.45;
-            word-break: break-word;
-        }
-
-        #chatWidgetWrap .chat-msg.msg-other {
-            align-self: flex-start;
-            background: #fff;
-            border: 1px solid #e2e8f0;
-            color: #1e293b;
-            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
-        }
-
-        #chatWidgetWrap .chat-msg.msg-self {
-            align-self: flex-end;
-            background: linear-gradient(135deg, #0ea5e9, #0891b2);
-            color: #fff;
-        }
-
-        #chatWidgetWrap .chat-msg-sender {
-            font-size: 0.7rem;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.03em;
-            margin-bottom: 4px;
-            opacity: 0.9;
-        }
-
-        #chatWidgetWrap .chat-msg.msg-other .chat-msg-sender {
-            color: #0891b2;
-        }
-
-        #chatWidgetWrap .chat-msg.msg-self .chat-msg-sender {
-            color: rgba(255, 255, 255, 0.95);
-        }
-
-        #chatWidgetWrap .chat-msg-time {
-            font-size: 0.7rem;
-            opacity: 0.75;
-            margin-top: 4px;
-        }
-
-        #chatWidgetWrap .chat-input-row {
-            padding: 12px;
-            border-top: 1px solid #e2e8f0;
-            background: #fff;
-            display: flex;
-            gap: 8px;
-            align-items: flex-end;
-        }
-
-        #chatWidgetWrap .chat-input {
-            flex: 1;
-            padding: 10px 14px;
-            border: 1.5px solid #cbd5e1;
-            border-radius: 8px;
-            font-size: 0.875rem;
-            font-family: inherit;
-            resize: none;
-            min-height: 42px;
-            max-height: 100px;
-        }
-
-        #chatWidgetWrap .chat-input:focus {
-            outline: none;
-            border-color: #0ea5e9;
-            box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.1);
-        }
-
-        #chatWidgetWrap .chat-send-btn {
-            padding: 10px 18px;
-            background: linear-gradient(135deg, #0ea5e9, #0891b2);
-            color: #fff;
-            border: none;
-            border-radius: 8px;
-            font-size: 0.875rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: transform 0.2s, box-shadow 0.2s;
-        }
-
-        #chatWidgetWrap .chat-send-btn:hover {
-            transform: translateY(-1px);
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-        }
-
-        #chatWidgetWrap .chat-send-btn:disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
-            transform: none;
-        }
-
-        #chatWidgetWrap .chat-mode-toggle {
-            display: flex;
-            gap: 0;
-            padding: 6px 12px;
-            background: #f1f5f9;
-            border-bottom: 1px solid #e2e8f0;
-        }
-
-        #chatWidgetWrap .chat-mode-btn {
-            flex: 1;
-            padding: 8px 12px;
-            border: 1px solid #cbd5e1;
-            background: #fff;
-            color: #64748b;
-            font-size: 0.8rem;
-            font-weight: 600;
-            cursor: pointer;
-            border-radius: 6px;
-            margin: 0 2px;
-            transition: background 0.2s, color 0.2s, border-color 0.2s;
-        }
-
-        #chatWidgetWrap .chat-mode-btn:first-child {
-            margin-left: 0;
-        }
-
-        #chatWidgetWrap .chat-mode-btn:last-child {
-            margin-right: 0;
-        }
-
-        #chatWidgetWrap .chat-mode-btn:hover {
-            background: #e2e8f0;
-            color: #1e293b;
-        }
-
-        #chatWidgetWrap .chat-mode-btn.chat-mode-active {
-            background: linear-gradient(135deg, #0ea5e9, #0891b2);
-            color: #fff;
-            border-color: #0891b2;
-        }
-
-        #chatWidgetWrap .chat-msg-typing .chat-msg-text {
-            font-style: italic;
-            opacity: 0.85;
-        }
-
-        #chatWidgetWrap .chat-voice-wrap {
-            flex-shrink: 0;
-            display: flex;
-            align-items: flex-end;
-        }
-
-        #chatWidgetWrap .chat-voice-btn {
-            width: 42px;
-            height: 42px;
-            min-width: 42px;
-            border-radius: 50%;
-            border: 1.5px solid #cbd5e1;
-            background: #fff;
-            color: #64748b;
-            font-size: 1.2rem;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: background 0.2s, color 0.2s, border-color 0.2s;
-        }
-
-        #chatWidgetWrap .chat-voice-btn:hover {
-            background: #f1f5f9;
-            color: #0ea5e9;
-            border-color: #0ea5e9;
-        }
-
-        #chatWidgetWrap .chat-voice-btn.chat-voice-recording {
-            background: #fee2e2;
-            color: #ef4444;
-            border-color: #ef4444;
-            animation: chat-voice-pulse 1s ease-in-out infinite;
-        }
-
-        @keyframes chat-voice-pulse {
-
-            0%,
-            100% {
-                opacity: 1;
-            }
-
-            50% {
-                opacity: 0.7;
-            }
-        }
-    </style>
-    <div id="chatWidgetWrap" class="chat-widget-wrap">
-        <button type="button" id="chatToggleBtn" class="chat-toggle-btn" title="Group chat" aria-label="Open chat">
-            <span class="chat-badge" id="chatUnreadBadge">0</span>
-            💬
-        </button>
-        <div class="chat-panel">
-            <div class="chat-panel-header">
-                <span class="chat-panel-title" id="chatPanelTitle">Team Chat</span>
-                <button type="button" id="chatPanelClose" class="chat-panel-close"
-                    aria-label="Close chat">&times;</button>
-            </div>
-            <div class="chat-mode-toggle">
-                <button type="button" id="chatModeTeam" class="chat-mode-btn chat-mode-active">Team</button>
-                <button type="button" id="chatModeAi" class="chat-mode-btn">AI</button>
-            </div>
-            <div class="chat-status" id="chatStatus">Connecting…</div>
-            <div class="chat-messages" id="chatMessages"></div>
-            <div class="chat-input-row">
-                <span id="chatVoiceWrap" class="chat-voice-wrap" style="display: none;">
-                    <button type="button" id="chatVoiceBtn" class="chat-voice-btn" title="Record voice message"
-                        aria-label="Record voice">🎤</button>
-                </span>
-                <textarea id="chatInput" class="chat-input" placeholder="Type a message…" rows="1"></textarea>
-                <button type="button" id="chatSendBtn" class="chat-send-btn">Send</button>
-            </div>
-        </div>
-    </div>
 </body>
 
 </html>

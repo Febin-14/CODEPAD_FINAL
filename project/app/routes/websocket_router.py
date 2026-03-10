@@ -118,16 +118,33 @@ async def websocket_manager_view(websocket: WebSocket, task_id: str):
 # -------- Group Chat Room --------
 
 @router.websocket("/ws/chat")
-async def websocket_chat(websocket: WebSocket):
-    """WebSocket endpoint for group chat (managers + developers)."""
+async def websocket_chat(websocket: WebSocket, project_id: str):
+    """WebSocket endpoint for project-specific team chat."""
     cookies = _get_cookies_from_scope(websocket.scope)
     username = cookies.get("username")
     role = cookies.get("role")
     if not username or not role:
         await websocket.close(code=4001, reason="Not authenticated")
         return
+
+    # --- Server-side team membership guard ---
     try:
-        await chat_room_manager.connect(websocket, username, role)
+        db = get_db()
+        project = await db.projects.find_one({"_id": ObjectId(project_id)})
+        if not project:
+            await websocket.close(code=4004, reason="Project not found")
+            return
+        assigned = project.get("assigned_developers", [])
+        # Managers can always join for monitoring
+        if role != "manager" and username not in assigned:
+            await websocket.close(code=4003, reason="You are not a member of this project")
+            return
+    except Exception:
+        await websocket.close(code=4004, reason="Invalid project")
+        return
+
+    try:
+        await chat_room_manager.connect(websocket, username, role, project_id)
         try:
             while True:
                 data = await websocket.receive_text()
@@ -145,6 +162,7 @@ async def websocket_chat(websocket: WebSocket):
                     "sender_role": role,
                     "message": text,
                     "created_at": created_at,
+                    "project_id": project_id
                 }
                 await db.chat_messages.insert_one(doc)
                 payload = {
@@ -153,37 +171,38 @@ async def websocket_chat(websocket: WebSocket):
                     "sender_role": role,
                     "message": text,
                     "created_at": created_at,
+                    "project_id": project_id
                 }
-                await chat_room_manager.broadcast(payload, exclude_websocket=websocket)
+                await chat_room_manager.broadcast(payload, project_id=project_id, exclude_websocket=websocket)
                 # Also send to sender so their UI shows the message (with same format)
                 try:
                     await websocket.send_text(json.dumps(payload))
                 except Exception:
                     pass
         except WebSocketDisconnect:
-            chat_room_manager.disconnect(websocket)
+            chat_room_manager.disconnect(websocket, project_id)
     except Exception as e:
         print(f"Chat WebSocket error: {e}")
         try:
-            chat_room_manager.disconnect(websocket)
+            chat_room_manager.disconnect(websocket, project_id)
             await websocket.close()
         except Exception:
             pass
 
 
 @router.get("/api/chat/messages")
-async def get_chat_messages(request: Request, limit: int = 50, before: str = None):
-    """Get recent chat messages for the group room."""
+async def get_chat_messages(request: Request, project_id: str, limit: int = 50, before: str = None):
+    """Get recent chat messages for the specified project."""
     if request.cookies.get("username") is None:
         raise HTTPException(status_code=401, detail="Not authenticated")
     db = get_db()
-    q = {}
+    q = {"project_id": project_id}
     if before:
         q["created_at"] = {"$lt": before}
     cursor = db.chat_messages.find(q).sort("created_at", -1).limit(limit)
     messages = await cursor.to_list(length=limit)
     messages.reverse()
-    return {"messages": [{"sender_username": m["sender_username"], "sender_role": m["sender_role"], "message": m["message"], "created_at": m["created_at"]} for m in messages]}
+    return {"messages": [{"sender_username": m["sender_username"], "sender_role": m.get("sender_role", ""), "message": m["message"], "created_at": m["created_at"], "project_id": m.get("project_id")} for m in messages]}
 
 
 @router.post("/api/chat/ai")
