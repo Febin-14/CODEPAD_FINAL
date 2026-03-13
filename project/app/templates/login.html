@@ -5,23 +5,23 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CodePad - Login</title>
-    <link rel="stylesheet" href="{{ url_for('static', path='style.css') }}?v=2">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', path='style.css') }}?v=11">
+    <script src="{{ url_for('static', path='ui_feedback.js') }}"></script>
     <script src="{{ url_for('static', path='theme.js') }}"></script>
 </head>
 
-<body class="login-body">
+<body class="login-body auth-page">
     
-    <div class="login-wrapper">
-        <div class="login-container" style="position: relative;">
-            <button id="theme-toggle" class="theme-toggle" aria-label="Toggle Theme" title="Toggle Theme" style="position: absolute; top: 16px; right: 24px; background: none; border: none; cursor: pointer; display:flex; align-items:center; justify-content:center; padding: 6px; border-radius: 50%; transition: background 0.2s;">
-                <img src="/static/moon.png" id="theme-icon" alt="Theme Toggle" style="width:24px;height:24px;transition:transform 0.3s;filter:invert(0.8);">
+    <div class="login-wrapper auth-shell">
+        <div class="login-container auth-card">
+            <button id="theme-toggle" class="theme-toggle auth-theme-toggle" aria-label="Toggle Theme" title="Toggle Theme">
+                <img src="/static/moon.png" id="theme-icon" class="theme-icon" alt="Theme Toggle">
             </button>
             
             
             <div class="login-header">
                 <h1 class="login-brand">CodePad</h1>
-                <p class="login-subtitle">Access your project workspace</p>
+                <p class="login-subtitle">Sign in to manage projects, tasks, and reviews.</p>
             </div>
 
             <form action="/login" method="post" class="login-form">
@@ -52,27 +52,30 @@
             </form>
 
             {% if request.query_params.get('error') == 'role_mismatch' %}
-            <div class="error-message"
-                style="display: block; color: var(--danger); margin-top: 1rem; text-align: center; font-size: 0.9rem;">
+            <div class="form-message error-message error">
                 <span class="error-text">Selected role is incorrect for this user.</span>
             </div>
+            {% elif request.query_params.get('error') == 'pending_approval' %}
+            <div class="form-message error-message error">
+                <span class="error-text">Your developer account is waiting for manager approval.</span>
+            </div>
             {% elif request.query_params.get('error') == 'invalid' %}
-            <div class="error-message"
-                style="display: block; color: var(--danger); margin-top: 1rem; text-align: center; font-size: 0.9rem;">
+            <div class="form-message error-message error">
                 <span class="error-text">Invalid username or password.</span>
             </div>
             {% elif request.query_params.get('success') == 'registered' %}
-            <div class="error-message"
-                style="display: block; color: var(--success); margin-top: 1rem; text-align: center; font-size: 0.9rem;">
-                <span class="error-text" style="color: var(--success);">Account created successfully. Please sign
-                    in.</span>
+            <div class="form-message error-message success">
+                <span class="error-text">Account created successfully. Please sign in.</span>
+            </div>
+            {% elif request.query_params.get('success') == 'pending_approval' %}
+            <div class="form-message error-message success">
+                <span class="error-text">Developer account created. A manager must approve it before sign in.</span>
             </div>
             {% endif %}
 
-            <div style="margin-top: 1.5rem; text-align: center;">
-                <span style="color: var(--text-muted); font-size: 0.9rem;">Don't have an account? </span>
-                <a href="/register"
-                    style="color: var(--accent-1); text-decoration: none; font-size: 0.9rem; font-weight: 500;">Register</a>
+            <div class="login-footer auth-footer">
+                <span>Don't have an account? </span>
+                <a href="/register" class="auth-link">Register</a>
             </div>
         </div>
     </div>

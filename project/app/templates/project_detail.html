@@ -5,15 +5,17 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ project.title }} – Project</title>
-    <link rel="stylesheet" href="{{ url_for('static', path='style.css') }}?v=3">
+    <link rel="stylesheet" href="{{ url_for('static', path='style.css') }}?v=11">
+    <script src="{{ url_for('static', path='ui_feedback.js') }}"></script>
     <script src="{{ url_for('static', path='theme.js') }}"></script>
-    <script src="{{ url_for('static', path='chat.js') }}"></script>
+    <script src="{{ url_for('static', path='chat.js') }}?v=2"></script>
+    <script src="{{ url_for('static', path='profile_popover.js') }}?v=2" defer></script>
     <script>
         window.currentProjectId = "{{ project._id }}";
     </script>
 </head>
 
-<body>
+<body class="app-shell project-shell">
     <div class="app-wrapper">
 
         <header class="top-bar">
@@ -22,61 +24,80 @@
                 <div class="profile-section">
                     <a href="/dashboard" class="nav-link">Back to Dashboard</a>
                     <span class="greeting">Hello, <strong>{{ username }}</strong></span>
-                    <div class="avatar-circle">{{ username[0].upper() }}</div>
+                    {% include 'profile_popover.html' %}
 
                     <a href="/logout" class="logout-link">Logout</a>
 
-                    <button id="theme-toggle" class="theme-toggle" aria-label="Toggle Theme" title="Toggle Theme"
-                        style="background:none; border:none; cursor:pointer; display:flex; align-items:center; justify-content:center; padding: 6px; margin-left: 8px; border-radius: 50%; transition: background 0.2s;">
-                        <img src="/static/moon.png" id="theme-icon" alt="Theme Toggle"
-                            style="width:20px;height:20px;transition:transform 0.3s;filter:invert(0.8);">
+                    <button id="theme-toggle" class="theme-toggle" aria-label="Toggle Theme" title="Toggle Theme">
+                        <img src="/static/moon.png" id="theme-icon" class="theme-icon" alt="Theme Toggle">
                     </button>
                 </div>
             </div>
         </header>
 
         <main class="main-content">
-            <div class="layout-grid" style="grid-template-columns: 1fr;">
-                <section class="panel overview-panel" style="margin-bottom: 24px;">
-                    <div class="panel-header"
-                        style="display: flex; justify-content: space-between; align-items: center; position: relative; padding: 24px 28px; background: linear-gradient(180deg, rgba(255,255,255,0.04), transparent);">
-                        <div style="flex: 1; display: flex; align-items: center; gap: 16px;">
-                            <div
-                                style="width: 4px; height: 32px; background: linear-gradient(135deg, var(--accent-1), var(--accent-2)); border-radius: 2px;">
-                            </div>
-                            <div>
-                                <h2 class="section-title"
-                                    style="font-size: 1.8rem; margin-bottom: 4px; font-weight: 700; letter-spacing: -0.02em;">
-                                    {{ project.title }}</h2>
-                                <p class="section-description"
-                                    style="font-size: 1rem; line-height: 1.6; color: var(--text-secondary);">{{
-                                    project.description or "No description provided." }}</p>
-                            </div>
-                        </div>
-                        <div style="display: flex; align-items: center; gap: 20px; margin-left: 32px;">
-                            <span class="status-indicator status-{{ project.status or 'active' }}"
-                                style="white-space: nowrap; font-weight: 600; font-size: 0.85rem; padding: 6px 14px;">
+            <div class="layout-grid page-layout single-column-grid">
+                <section class="page-header page-header-split project-page-header">
+                    <div class="page-header-copy">
+                        <div class="page-title-row">
+                            <h2 class="page-title">{{ project.title }}</h2>
+                            <span class="status-indicator status-{{ project.status or 'active' }}">
                                 {{ (project.status or 'active')|capitalize }}
                             </span>
-                            {% if project.status != 'completed' %}
-                            <button type="button" class="submit-button"
-                                style="background: linear-gradient(135deg, #10b981, #059669); padding: 10px 18px; font-size: 0.85rem; white-space: nowrap; font-weight: 600; box-shadow: 0 4px 12px rgba(16,185,129,0.3); border-radius: 8px;"
-                                onclick="openCompleteProjectModal('{{ project._id }}', '{{ project.title|escape }}')">
-                                Mark as Completed
-                            </button>
-                            <form id="complete-form-{{ project._id }}" action="/api/projects/{{ project._id }}/complete"
-                                method="post" style="display: none;"></form>
-                            {% endif %}
                         </div>
+                        <p class="page-description">{{ project.description or "No description provided." }}</p>
+                    </div>
+                    <div class="page-header-actions">
+                        <a href="/dashboard" class="secondary-button">Back to Dashboard</a>
+                        {% if project.status != 'completed' %}
+                        <button type="button" class="submit-button success-button"
+                            onclick="openCompleteProjectModal('{{ project._id }}', '{{ project.title|escape }}')">
+                            Mark Completed
+                        </button>
+                        <form id="complete-form-{{ project._id }}" action="/api/projects/{{ project._id }}/complete"
+                            method="post" style="display: none;"></form>
+                        {% else %}
+                        <button type="button" id="pushProjectGithubBtn" class="submit-button"
+                            onclick="pushCompletedProjectToGitHub()">
+                            Push to GitHub
+                        </button>
+                        <button type="button" class="secondary-button" onclick="openCompletedProjectGitHubUrl()">
+                            View on GitHub
+                        </button>
+                        <button type="button" class="secondary-button"
+                            onclick="window.location.href='/api/projects/{{ project._id }}/download'">
+                            Download Source
+                        </button>
+                        {% endif %}
                     </div>
                 </section>
 
-                <!-- Task Management Row - New Task and Task Overview side by side -->
-                <div class="creation-row"
-                    style="display: grid; grid-template-columns: 1fr 1.3fr; gap: 24px; margin-bottom: 32px;">
+                <section class="summary-strip project-summary">
+                    <article class="summary-item">
+                        <span class="summary-label">Tasks</span>
+                        <strong class="summary-value">{{ tasks|length }}</strong>
+                    </article>
+                    <article class="summary-item">
+                        <span class="summary-label">Active Build</span>
+                        <strong class="summary-value">{{ tasks|selectattr('status', 'equalto', 'in_progress')|list|length }}</strong>
+                    </article>
+                    <article class="summary-item">
+                        <span class="summary-label">Review Ready</span>
+                        <strong class="summary-value">{{ tasks|selectattr('status', 'equalto', 'submitted_for_review')|list|length }}</strong>
+                    </article>
+                    <article class="summary-item">
+                        <span class="summary-label">Assigned Devs</span>
+                        <strong class="summary-value">{{ project.assigned_developers|length }}</strong>
+                    </article>
+                    <article class="summary-item">
+                        <span class="summary-label">Completion</span>
+                        <strong class="summary-value">{{ project.completion_percent }}%</strong>
+                    </article>
+                </section>
 
-                    <!-- New Task for this project -->
-                    <section class="panel creation-panel" style="margin-bottom: 0;">
+                <div class="creation-row project-workspace-row">
+
+                    <section class="panel creation-panel">
                         <div class="panel-header">
                             <h2 class="section-title">New Task for this Project</h2>
                             <p class="section-description">Delegate work within "{{ project.title }}".</p>
@@ -91,8 +112,23 @@
                             <div class="input-group">
                                 <label for="task-desc" class="input-label">Requirements</label>
                                 <textarea id="task-desc" name="description" class="textarea-input"
-                                    placeholder="Describe requirements. The task will be auto-assigned to the best-matching developer based on their role and bio."
+                                    placeholder="Describe requirements. The task will be auto-assigned to the best-matching developer based on role fit and current workload."
                                     rows="2"></textarea>
+                            </div>
+                            <div class="input-group">
+                                <label for="task-framework" class="input-label">Framework (Optional)</label>
+                                <select id="task-framework" name="framework" class="select-input">
+                                    <option value="" selected>None / Any</option>
+                                    <option value="React">React</option>
+                                    <option value="Vue">Vue</option>
+                                    <option value="Angular">Angular</option>
+                                    <option value="Next.js">Next.js</option>
+                                    <option value="Tailwind">Tailwind</option>
+                                    <option value="FastAPI">FastAPI</option>
+                                    <option value="Django">Django</option>
+                                    <option value="Flask">Flask</option>
+                                    <option value="Express">Express</option>
+                                </select>
                             </div>
                             <div class="input-group">
                                 <label for="task-priority" class="input-label">Priority</label>
@@ -102,14 +138,13 @@
                                     <option value="high">High</option>
                                 </select>
                             </div>
-                            <button type="submit" class="submit-button" style="margin-top: 16px;">
+                            <button type="submit" class="submit-button">
                                 Create Task
                             </button>
                         </form>
                     </section>
 
-                    <!-- Task overview for this project -->
-                    <section class="panel overview-panel" style="margin-bottom: 0;">
+                    <section class="panel overview-panel">
                         <div class="panel-header">
                             <div>
                                 <h2 class="section-title">Task Overview</h2>
@@ -122,6 +157,7 @@
                                     <tr>
                                         <th>Task</th>
                                         <th>Category</th>
+                                        <th>Framework</th>
                                         <th>Assignee</th>
                                         <th>Status</th>
                                         <th>Actions</th>
@@ -130,11 +166,14 @@
                                 <tbody>
                                     {% for task in tasks %}
                                     <tr>
-                                        <td class="task-title-cell" style="font-weight: 600;">{{ task.title }}</td>
+                                        <td class="task-title-cell">{{ task.title }}</td>
                                         <td>
                                             <span class="category-badge category-{{ task.type }}">
                                                 {{ task.type|capitalize }}
                                             </span>
+                                        </td>
+                                        <td class="framework-cell">
+                                            {{ task.framework or "—" }}
                                         </td>
                                         <td class="assignee-cell">{{ task.assigned_to or "Unassigned" }}</td>
                                         <td>
@@ -199,7 +238,7 @@
                                     {% endfor %}
                                     {% if not tasks %}
                                     <tr>
-                                        <td colspan="5" class="description-cell">No tasks for this project yet.</td>
+                                        <td colspan="6" class="inline-empty-state">No tasks for this project yet.</td>
                                     </tr>
                                     {% endif %}
                                 </tbody>
@@ -210,15 +249,14 @@
 
                 <!-- Assigned Developers (collapsible) -->
                 <section class="panel overview-panel" style="margin-bottom: 24px;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 16px 24px; cursor: pointer;"
+                    <div class="project-action-row" style="justify-content: space-between; padding: 16px 24px; cursor: pointer;"
                         onclick="document.getElementById('devListCollapsible').style.display = document.getElementById('devListCollapsible').style.display === 'none' ? 'block' : 'none'; this.querySelector('.collapse-icon').textContent = document.getElementById('devListCollapsible').style.display === 'none' ? '▶' : '▼';">
-                        <div style="display: flex; align-items: center; gap: 10px;">
-                            <div style="width: 3px; height: 20px; background: var(--accent-2); border-radius: 1.5px;">
+                        <div class="project-action-row">
+                            <div class="section-accent" style="width: 3px; min-width: 3px;">
                             </div>
                             <h2 class="section-title" style="margin-bottom: 0; font-size: 1.1rem; font-weight: 600;">
                                 Assigned Developers</h2>
-                            <span
-                                style="font-size: 0.8rem; color: var(--text-muted); background: rgba(255,255,255,0.05); padding: 2px 10px; border-radius: 10px;">{{
+                            <span class="developer-count-chip">{{
                                 project.assigned_developers|length }}</span>
                         </div>
                         <span class="collapse-icon"
@@ -226,13 +264,16 @@
                     </div>
                     <div id="devListCollapsible"
                         style="padding: 0 24px 20px; border-top: 1px solid var(--border-subtle);">
-                        {% if project.assigned_developers %}
-                        <div style="display: flex; flex-wrap: wrap; gap: 12px; margin-top: 16px;">
-                            {% for dev in project.assigned_developers %}
-                            <span class="category-badge"
-                                style="background: rgba(14,165,233,0.15); color: var(--accent-1); padding: 8px 16px; border-radius: 8px; font-size: 0.9rem; font-weight: 500; border: 1px solid rgba(14,165,233,0.2);">
-                                {{ dev }}
-                            </span>
+                        {% if assigned_developer_details %}
+                        <div class="assigned-dev-list" style="margin-top: 16px;">
+                            {% for dev in assigned_developer_details %}
+                            <div class="assigned-dev-item">
+                                <span class="developer-chip">{{ dev.username }}</span>
+                                <span class="availability-pill availability-{{ 'free' if dev.is_free else 'busy' }}">
+                                    {{ dev.availability_label }}
+                                </span>
+                                <span class="developer-detail-text">{{ dev.availability_detail }}</span>
+                            </div>
                             {% endfor %}
                         </div>
                         {% else %}
@@ -260,8 +301,11 @@
                     <span id="liveModalTaskTitle">Live Code View</span>
                     <span class="live-status-badge" id="liveStatusBadge">LIVE</span>
                 </div>
-                <!-- Spacer for centering -->
-                <div style="width: 80px;"></div>
+                <div class="modal-header-actions">
+                    <button type="button" class="secondary-button modal-back-btn" onclick="closeLiveCodeModal()">
+                        Back to Project
+                    </button>
+                </div>
             </div>
             <div class="modal-body" style="padding: 0;">
                 <div id="live-monaco-editor-container" style="width: 100%; height: 600px;"></div>
@@ -288,7 +332,7 @@
                     <span
                         style="background: rgba(0,0,0,0.05); color: #666; padding: 2px 6px; border-radius: 4px; font-size: 0.65rem; font-weight: 700; border: 1px solid rgba(0,0,0,0.1);">READ-ONLY</span>
                 </div>
-                <div style="display: flex; justify-content: flex-end; width: 180px;">
+                <div class="modal-header-actions">
                     <!-- Tab Switcher (Mac Style) -->
                     <div id="submittedTabBar" class="mac-tab-bar">
                         <button id="tabCodeBtn" onclick="switchSubmittedTab('code')" class="mac-tab-btn active">
@@ -298,6 +342,9 @@
                             Preview
                         </button>
                     </div>
+                    <button type="button" class="secondary-button modal-back-btn" onclick="closeSubmittedCodeModal()">
+                        Back to Project
+                    </button>
                 </div>
             </div>
             <div id="submittedCodeLoading"
@@ -317,12 +364,16 @@
                 </div>
                 <!-- Run Output Panel (terminal) -->
                 <div id="submitted-run-panel" tabindex="0"
-                    style="width: 100%; height: 600px; display: none; background: #ffffff; overflow: auto; padding: 20px; outline: none; cursor: block;">
+                    style="width: 100%; height: 600px; display: none; background: #ffffff; overflow: auto; padding: 20px; outline: none; cursor: default;">
                     <pre id="submittedRunContent"
                         style="color: #000000; font-family: 'Menlo', 'Monaco', 'Courier New', monospace; font-size: 14px; white-space: pre-wrap; margin: 0; display: inline;"></pre>
                     <span id="submittedTerminalCursor"
                         style="display: inline-block; width: 8px; height: 16px; background: #000000; vertical-align: middle; animation: blink 1s step-end infinite;"></span>
                 </div>
+            </div>
+            <div class="review-actions" style="padding: 16px 20px; margin-top: 0; justify-content: flex-end; border-top: 1px solid #444;">
+                <button type="button" class="secondary-button" onclick="pushSubmittedTaskToGitHub()">Push to GitHub</button>
+                <button type="button" class="secondary-button" onclick="openSubmittedTaskGitHubUrl()">View on GitHub</button>
             </div>
             <!-- Review Section -->
             <div id="reviewSection" class="modal-review-section"
@@ -439,6 +490,21 @@
             border-bottom-left-radius: 11px;
             border-bottom-right-radius: 11px;
             overflow: hidden;
+        }
+
+        .modal-header-actions {
+            display: flex;
+            justify-content: flex-end;
+            align-items: center;
+            gap: 10px;
+            min-width: 220px;
+        }
+
+        .modal-back-btn {
+            padding: 0.45rem 0.85rem;
+            min-height: auto;
+            font-size: 0.78rem;
+            white-space: nowrap;
         }
 
         /* Dark Mode Overrides for Mac Window */
@@ -814,7 +880,7 @@
                     content.textContent += msg.data;
                     panel.scrollTop = panel.scrollHeight;
                 } else if (msg.type === 'timeout') {
-                    content.textContent += '\n\n' + msg.message + '\nNote: Interactive scripts (using input()) are not supported if they sit idle too long.';
+                    content.textContent += '\n\n' + msg.message;
                 } else if (msg.type === 'error') {
                     content.textContent += '\n\nError: ' + msg.message;
                 } else if (msg.type === 'exit') {
@@ -862,7 +928,13 @@
 
         async function approveSubmittedTask() {
             if (!currentReviewTaskId) return;
-            if (!confirm('Are you sure you want to approve this task?')) return;
+            const confirmed = await window.appConfirm({
+                title: 'Approve submitted task?',
+                message: 'This will mark the task as approved and complete.',
+                confirmText: 'Approve task',
+                tone: 'success'
+            });
+            if (!confirmed) return;
 
             try {
                 const res = await fetch('/api/approve_task', {
@@ -871,16 +943,16 @@
                     body: JSON.stringify({ task_id: currentReviewTaskId })
                 });
 
+                const data = await res.json().catch(() => ({}));
                 if (res.ok) {
-                    alert('Task approved successfully!');
+                    window.queueAppNotice(data.message || 'Task approved successfully!', { type: 'success' });
                     window.location.reload();
                 } else {
-                    const data = await res.json();
-                    alert('Error: ' + (data.detail || 'Failed to approve task'));
+                    window.appNotice(data.detail || 'Failed to approve task', { type: 'error' });
                 }
             } catch (e) {
                 console.error(e);
-                alert('Connection error while approving task');
+                window.appNotice('Connection error while approving task', { type: 'error' });
             }
         }
 
@@ -888,7 +960,7 @@
             if (!currentReviewTaskId) return;
             const comments = document.getElementById('reviewComments').value.trim();
             if (!comments) {
-                alert('Please provide feedback comments before reassigning the task.');
+                window.appNotice('Please provide feedback comments before reassigning the task.', { type: 'warning' });
                 return;
             }
 
@@ -903,15 +975,107 @@
                 });
 
                 if (res.ok) {
-                    alert('Task reassigned to developer with your feedback.');
+                    window.queueAppNotice('Task reassigned to developer with your feedback.', { type: 'success' });
                     window.location.reload();
                 } else {
                     const data = await res.json();
-                    alert('Error: ' + (data.detail || 'Failed to reassign task'));
+                    window.appNotice(data.detail || 'Failed to reassign task', { type: 'error' });
                 }
             } catch (e) {
                 console.error(e);
-                alert('Connection error while reassigning task');
+                window.appNotice('Connection error while reassigning task', { type: 'error' });
+            }
+        }
+
+        async function pushSubmittedTaskToGitHub() {
+            if (!currentReviewTaskId) {
+                window.appNotice('Open a submitted task first before pushing code to GitHub.', { type: 'warning' });
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/tasks/${currentReviewTaskId}/push_github`, { method: 'POST' });
+                const data = await response.json().catch(() => ({}));
+                if (!response.ok) {
+                    window.appNotice(data.detail || 'Failed to push code to GitHub', { type: 'error' });
+                    return;
+                }
+                window.queueAppNotice(data.message || 'Code pushed to GitHub.', { type: 'success' });
+                if (data.url) {
+                    window.open(data.url, '_blank', 'noopener');
+                }
+            } catch (error) {
+                console.error(error);
+                window.appNotice('Failed to push code to GitHub', { type: 'error' });
+            }
+        }
+
+        async function openSubmittedTaskGitHubUrl() {
+            if (!currentReviewTaskId) {
+                window.appNotice('Open a submitted task first before opening its GitHub link.', { type: 'warning' });
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/task_github_url/${currentReviewTaskId}`);
+                const data = await response.json().catch(() => ({}));
+                if (!response.ok) {
+                    window.appNotice(data.detail || 'Code not available on GitHub', { type: 'error' });
+                    return;
+                }
+                if (data.url) {
+                    window.open(data.url, '_blank', 'noopener');
+                }
+            } catch (error) {
+                console.error(error);
+                window.appNotice('Error opening GitHub link', { type: 'error' });
+            }
+        }
+
+        async function pushCompletedProjectToGitHub() {
+            const pushButton = document.getElementById('pushProjectGithubBtn');
+            const originalLabel = pushButton ? pushButton.textContent : '';
+            if (pushButton) {
+                pushButton.disabled = true;
+                pushButton.textContent = 'Pushing...';
+            }
+
+            try {
+                const response = await fetch(`/api/projects/{{ project._id }}/push_github`, { method: 'POST' });
+                const data = await response.json().catch(() => ({}));
+                if (!response.ok) {
+                    window.appNotice(data.detail || 'Failed to push completed project to GitHub', { type: 'error' });
+                    return;
+                }
+                window.queueAppNotice(data.message || 'Completed project pushed to GitHub.', { type: 'success' });
+                if (data.url) {
+                    window.open(data.url, '_blank', 'noopener');
+                }
+            } catch (error) {
+                console.error(error);
+                window.appNotice('Failed to push completed project to GitHub', { type: 'error' });
+            } finally {
+                if (pushButton) {
+                    pushButton.disabled = false;
+                    pushButton.textContent = originalLabel;
+                }
+            }
+        }
+
+        async function openCompletedProjectGitHubUrl() {
+            try {
+                const response = await fetch(`/api/project_github_url/{{ project._id }}`);
+                const data = await response.json().catch(() => ({}));
+                if (!response.ok) {
+                    window.appNotice(data.detail || 'Project is not available on GitHub yet', { type: 'error' });
+                    return;
+                }
+                if (data.url) {
+                    window.open(data.url, '_blank', 'noopener');
+                }
+            } catch (error) {
+                console.error(error);
+                window.appNotice('Error opening project GitHub link', { type: 'error' });
             }
         }
 
@@ -1037,7 +1201,25 @@
             if (event.target == document.getElementById('submittedCodeModal')) {
                 closeSubmittedCodeModal();
             }
+            if (event.target == document.getElementById('completeProjectModal')) {
+                closeCompleteProjectModal();
+            }
         }
+
+        document.addEventListener('keydown', function (event) {
+            if (event.key !== 'Escape') return;
+            if (document.getElementById('submittedCodeModal').style.display === 'block') {
+                closeSubmittedCodeModal();
+                return;
+            }
+            if (document.getElementById('liveCodeModal').style.display === 'block') {
+                closeLiveCodeModal();
+                return;
+            }
+            if (document.getElementById('completeProjectModal').style.display === 'block') {
+                closeCompleteProjectModal();
+            }
+        });
 
         // Listen for theme changes to update Monaco
         const observer = new MutationObserver((mutations) => {

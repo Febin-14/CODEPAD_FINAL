@@ -1,0 +1,343 @@
+INFO:     127.0.0.1:50770 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50776 - "GET /openapi.json HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65499 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54701 - "GET /static/theme.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65499 - "GET /static/style.css?v=7 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55484 - "GET /static/moon.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49294 - "GET /static/ui_feedback.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65499 - "GET /favicon.ico HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65148 - "POST /login HTTP/1.1" 302 Found
+INFO:     127.0.0.1:65148 - "GET /dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65148 - "GET /static/chat.js?v=2 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55170 - "GET /static/profile_popover.js?v=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55170 - "GET /api/github/config HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55170 - "GET /api/chat/messages?limit=80&project_id=69afdb064b82e4a68e4b84d9 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56585 - "GET /projects/69afdb064b82e4a68e4b84d9 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56585 - "GET /api/chat/messages?limit=80&project_id=69afdb064b82e4a68e4b84d9 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56585 - "POST /api/projects/69afdb064b82e4a68e4b84d9/push_github HTTP/1.1" 400 Bad Request
+INFO:     127.0.0.1:56648 - "POST /api/projects/69afdb064b82e4a68e4b84d9/push_github HTTP/1.1" 400 Bad Request
+INFO:     127.0.0.1:50119 - "GET /api/project_github_url/69afdb064b82e4a68e4b84d9 HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:50119 - "GET /dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50119 - "GET /api/github/config HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50119 - "GET /api/chat/messages?limit=80&project_id=69afdb064b82e4a68e4b84d9 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59181 - "GET /dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59181 - "GET /static/style.css?v=7 HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:59181 - "GET /static/profile_popover.js?v=1 HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:59181 - "GET /api/github/config HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59181 - "GET /api/chat/messages?limit=80&project_id=69afdb064b82e4a68e4b84d9 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59181 - "GET /projects/69afdb064b82e4a68e4b84d9 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59181 - "GET /api/chat/messages?limit=80&project_id=69afdb064b82e4a68e4b84d9 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59181 - "POST /api/projects/69afdb064b82e4a68e4b84d9/push_github HTTP/1.1" 400 Bad Request
+INFO:     127.0.0.1:58861 - "POST /api/projects/69afdb064b82e4a68e4b84d9/push_github HTTP/1.1" 400 Bad Request
+INFO:     127.0.0.1:57720 - "GET /api/chat/messages?limit=80&project_id=69afdb064b82e4a68e4b84d9 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61741 - "POST /api/projects/69afdb064b82e4a68e4b84d9/push_github HTTP/1.1" 400 Bad Request
+INFO:     127.0.0.1:61741 - "GET /projects/69afdb064b82e4a68e4b84d9 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61741 - "GET /static/style.css?v=7 HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:59612 - "GET /static/chat.js?v=2 HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:59612 - "GET /static/profile_popover.js?v=1 HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:59612 - "GET /api/chat/messages?limit=80&project_id=69afdb064b82e4a68e4b84d9 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59612 - "POST /api/projects/69afdb064b82e4a68e4b84d9/push_github HTTP/1.1" 400 Bad Request
+INFO:     127.0.0.1:64959 - "GET /dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64959 - "GET /api/github/config HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64959 - "GET /api/chat/messages?limit=80&project_id=69afdb064b82e4a68e4b84d9 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55715 - "POST /api/github/config HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55715 - "POST /api/github/config HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55953 - "GET /projects/69afdb064b82e4a68e4b84d9 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55953 - "GET /api/chat/messages?limit=80&project_id=69afdb064b82e4a68e4b84d9 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55913 - "POST /api/projects/69afdb064b82e4a68e4b84d9/push_github HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62202 - "POST /api/projects/69afdb064b82e4a68e4b84d9/push_github HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58538 - "GET /api/project_github_url/69afdb064b82e4a68e4b84d9 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50798 - "POST /api/projects/69afdb064b82e4a68e4b84d9/push_github HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54930 - "GET /dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54930 - "GET /static/style.css?v=7 HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:54930 - "GET /static/profile_popover.js?v=1 HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:54930 - "GET /api/github/config HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54930 - "GET /api/chat/messages?limit=80&project_id=69afdb064b82e4a68e4b84d9 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50328 - "GET /developer_analytics HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50328 - "GET /static/style.css?v=8 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49669 - "GET /static/theme.js HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:60570 - "GET /static/ui_feedback.js HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:60570 - "GET /static/profile_popover.js?v=2 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49669 - "GET /api/developer_analytics HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51076 - "GET /dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51076 - "GET /static/chat.js?v=2 HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:51076 - "GET /api/github/config HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51076 - "GET /api/chat/messages?limit=80&project_id=69afdb064b82e4a68e4b84d9 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55765 - "GET /projects/69afedfce69f02ce714397d4 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55765 - "GET /static/style.css?v=8 HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:53723 - "GET /static/profile_popover.js?v=2 HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:53723 - "GET /api/chat/messages?limit=80&project_id=69afedfce69f02ce714397d4 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54388 - "POST /api/profile/photo HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:54388 - "GET /developer_analytics HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54388 - "GET /static/style.css?v=8 HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:54388 - "GET /static/profile_popover.js?v=2 HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:54388 - "GET /api/developer_analytics HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54388 - "GET /dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54388 - "GET /api/github/config HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54388 - "GET /api/chat/messages?limit=80&project_id=69afdb064b82e4a68e4b84d9 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54388 - "GET /developer_analytics HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54388 - "GET /api/developer_analytics HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56390 - "GET /dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56390 - "GET /api/github/config HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56390 - "GET /api/chat/messages?limit=80&project_id=69afdb064b82e4a68e4b84d9 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65061 - "GET /logout HTTP/1.1" 302 Found
+INFO:     127.0.0.1:65061 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65061 - "GET /static/style.css?v=8 HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:65061 - "GET /register HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55846 - "POST /register HTTP/1.1" 302 Found
+INFO:     127.0.0.1:55846 - "GET /?success=registered HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55846 - "GET /static/style.css?v=9 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58736 - "POST /login HTTP/1.1" 302 Found
+INFO:     127.0.0.1:58736 - "GET /dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58736 - "GET /static/chat.js?v=2 HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:58736 - "GET /static/profile_popover.js?v=2 HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:58736 - "GET /api/github/config HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58736 - "GET /api/chat/messages?limit=80&project_id=69afdb064b82e4a68e4b84d9 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55223 - "GET /dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55223 - "GET /static/style.css?v=9 HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:55223 - "GET /api/github/config HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55223 - "GET /api/chat/messages?limit=80&project_id=69afdb064b82e4a68e4b84d9 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56627 - "GET /projects/69afedfce69f02ce714397d4 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56627 - "GET /static/style.css?v=9 HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:56627 - "GET /api/chat/messages?limit=80&project_id=69afedfce69f02ce714397d4 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58068 - "GET /dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58068 - "GET /api/github/config HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58068 - "GET /api/chat/messages?limit=80&project_id=69afdb064b82e4a68e4b84d9 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53405 - "GET /dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53405 - "GET /static/style.css?v=10 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50406 - "GET /static/ui_feedback.js HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:57672 - "GET /static/theme.js HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:57672 - "GET /static/profile_popover.js?v=2 HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:57672 - "GET /api/developers/pending_requests HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:53405 - "GET /api/github/config HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53405 - "GET /api/chat/messages?limit=80&project_id=69afdb064b82e4a68e4b84d9 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53405 - "GET /dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57672 - "GET /api/developers/pending_requests HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:53405 - "GET /api/github/config HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53405 - "GET /api/chat/messages?limit=80&project_id=69afdb064b82e4a68e4b84d9 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53405 - "GET /dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57672 - "GET /api/developers/pending_requests HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:53405 - "GET /api/github/config HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53405 - "GET /api/chat/messages?limit=80&project_id=69afdb064b82e4a68e4b84d9 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53405 - "GET /dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57672 - "GET /api/developers/pending_requests HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:53405 - "GET /api/github/config HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53405 - "GET /api/chat/messages?limit=80&project_id=69afdb064b82e4a68e4b84d9 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53405 - "GET /dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57672 - "GET /api/developers/pending_requests HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:53405 - "GET /api/github/config HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53405 - "GET /api/chat/messages?limit=80&project_id=69afdb064b82e4a68e4b84d9 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53405 - "GET /dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57672 - "GET /api/developers/pending_requests HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:53405 - "GET /api/github/config HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53405 - "GET /api/chat/messages?limit=80&project_id=69afdb064b82e4a68e4b84d9 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53405 - "GET /dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53405 - "GET /api/github/config HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57672 - "GET /api/developers/pending_requests HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:57672 - "GET /api/chat/messages?limit=80&project_id=69afdb064b82e4a68e4b84d9 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57672 - "GET /dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53405 - "GET /api/developers/pending_requests HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:57672 - "GET /api/github/config HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57672 - "GET /api/chat/messages?limit=80&project_id=69afdb064b82e4a68e4b84d9 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57672 - "GET /dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53405 - "GET /api/developers/pending_requests HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:57672 - "GET /api/github/config HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57672 - "GET /api/chat/messages?limit=80&project_id=69afdb064b82e4a68e4b84d9 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57672 - "GET /dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57672 - "GET /api/github/config HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53405 - "GET /api/developers/pending_requests HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:53405 - "GET /api/chat/messages?limit=80&project_id=69afdb064b82e4a68e4b84d9 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53405 - "GET /dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57672 - "GET /api/developers/pending_requests HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:53405 - "GET /api/github/config HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53405 - "GET /api/chat/messages?limit=80&project_id=69afdb064b82e4a68e4b84d9 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53405 - "GET /logout HTTP/1.1" 302 Found
+INFO:     127.0.0.1:53405 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53405 - "GET /static/style.css?v=9 HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:63574 - "POST /login HTTP/1.1" 302 Found
+INFO:     127.0.0.1:63574 - "GET /?error=invalid HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63574 - "GET /register HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57533 - "POST /register HTTP/1.1" 302 Found
+INFO:     127.0.0.1:57533 - "GET /?success=registered HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57533 - "POST /login HTTP/1.1" 302 Found
+INFO:     127.0.0.1:57533 - "GET /dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58241 - "GET /api/developers/pending_requests HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:57533 - "GET /api/github/config HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57533 - "GET /api/chat/messages?limit=80&project_id=69afdb064b82e4a68e4b84d9 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53143 - "GET /api/developers/pending_requests HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:51180 - "GET /api/developers/pending_requests HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:54585 - "GET /api/developers/pending_requests HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65154 - "POST /add_project HTTP/1.1" 302 Found
+INFO:     127.0.0.1:65154 - "GET /dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65154 - "GET /static/style.css?v=10 HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:49772 - "GET /api/developers/pending_requests HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65154 - "GET /api/github/config HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65154 - "GET /api/chat/messages?limit=80&project_id=69afdb064b82e4a68e4b84d9 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65154 - "GET /projects/69b13cc2edcd0aa2a45e0def HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65154 - "GET /static/style.css?v=9 HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:65154 - "GET /api/chat/messages?limit=80&project_id=69b13cc2edcd0aa2a45e0def HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57786 - "POST /add_task HTTP/1.1" 302 Found
+INFO:     127.0.0.1:57786 - "GET /dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56760 - "GET /api/developers/pending_requests HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:57786 - "GET /api/github/config HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57786 - "GET /api/chat/messages?limit=80&project_id=69afdb064b82e4a68e4b84d9 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57786 - "GET /projects/69b13cc2edcd0aa2a45e0def HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57786 - "GET /api/chat/messages?limit=80&project_id=69b13cc2edcd0aa2a45e0def HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61034 - "POST /api/projects/69b13cc2edcd0aa2a45e0def/complete HTTP/1.1" 302 Found
+INFO:     127.0.0.1:61034 - "GET /projects/69b13cc2edcd0aa2a45e0def HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61034 - "GET /static/profile_popover.js?v=2 HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:61034 - "GET /api/chat/messages?limit=80&project_id=69b13cc2edcd0aa2a45e0def HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61034 - "POST /api/projects/69b13cc2edcd0aa2a45e0def/push_github HTTP/1.1" 400 Bad Request
+INFO:     127.0.0.1:49924 - "GET /api/project_github_url/69b13cc2edcd0aa2a45e0def HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:49924 - "GET /api/projects/69b13cc2edcd0aa2a45e0def/download HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65196 - "GET /dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65196 - "GET /static/style.css?v=10 HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:65196 - "GET /static/chat.js?v=2 HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:55395 - "GET /api/developers/pending_requests HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65196 - "GET /api/github/config HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65196 - "GET /api/chat/messages?limit=80&project_id=69afdb064b82e4a68e4b84d9 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52572 - "GET /api/developers/pending_requests HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:53397 - "GET /api/developers/pending_requests HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:56799 - "GET /logout HTTP/1.1" 302 Found
+INFO:     127.0.0.1:56799 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56799 - "GET /static/style.css?v=9 HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:58382 - "POST /login HTTP/1.1" 302 Found
+INFO:     127.0.0.1:58382 - "GET /?error=invalid HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58382 - "POST /login HTTP/1.1" 302 Found
+INFO:     127.0.0.1:58382 - "GET /?error=role_mismatch HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52761 - "POST /login HTTP/1.1" 302 Found
+INFO:     127.0.0.1:52761 - "GET /?error=invalid HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52362 - "POST /login HTTP/1.1" 302 Found
+INFO:     127.0.0.1:52362 - "GET /?error=invalid HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60302 - "POST /login HTTP/1.1" 302 Found
+INFO:     127.0.0.1:60302 - "GET /dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57554 - "GET /api/developers/pending_requests HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:60302 - "GET /api/github/config HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60302 - "GET /api/chat/messages?limit=80&project_id=69afdb064b82e4a68e4b84d9 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57894 - "GET /api/developers/pending_requests HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:52998 - "GET /api/developers/pending_requests HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:59806 - "GET /api/developers/pending_requests HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:58677 - "GET /api/developers/pending_requests HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:51392 - "GET /api/developers/pending_requests HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:54859 - "GET /api/developers/pending_requests HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:63430 - "GET /api/developers/pending_requests HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:58521 - "GET /api/developers/pending_requests HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:51323 - "GET /api/developers/pending_requests HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:51323 - "GET /dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51323 - "GET /static/style.css?v=10 HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:51323 - "GET /static/profile_popover.js?v=2 HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:50418 - "GET /api/developers/pending_requests HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:51323 - "GET /api/github/config HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51323 - "GET /api/chat/messages?limit=80&project_id=69afdb064b82e4a68e4b84d9 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63862 - "GET /api/developers/pending_requests HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:63862 - "GET /dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54902 - "GET /api/developers/pending_requests HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:63862 - "GET /api/github/config HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63862 - "GET /api/chat/messages?limit=80&project_id=69afdb064b82e4a68e4b84d9 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55095 - "GET /api/developers/pending_requests HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:55713 - "GET /api/developers/pending_requests HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:62288 - "GET /api/developers/pending_requests HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:54063 - "GET /api/developers/pending_requests HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:49235 - "GET /api/developers/pending_requests HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:51603 - "GET /api/developers/pending_requests HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:59179 - "GET /api/developers/pending_requests HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:56288 - "GET /api/developers/pending_requests HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:55543 - "GET /api/developers/pending_requests HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:62689 - "GET /api/developers/pending_requests HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:61325 - "GET /dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61325 - "GET /static/style.css?v=11 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60648 - "GET /api/developers/pending_requests HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:61325 - "GET /api/github/config HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61325 - "GET /api/chat/messages?limit=80&project_id=69afdb064b82e4a68e4b84d9 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52122 - "GET /api/developers/pending_requests HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:64255 - "GET /logout HTTP/1.1" 302 Found
+INFO:     127.0.0.1:64255 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64255 - "GET /static/style.css?v=11 HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:57702 - "GET /register HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54622 - "POST /register HTTP/1.1" 302 Found
+INFO:     127.0.0.1:54622 - "GET /?success=registered HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54622 - "GET /static/style.css?v=11 HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:60896 - "POST /login HTTP/1.1" 302 Found
+INFO:     127.0.0.1:60896 - "GET /dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60896 - "GET /static/profile_popover.js?v=2 HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:50469 - "GET /api/developers/pending_requests HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:60896 - "GET /api/github/config HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60896 - "GET /api/chat/messages?limit=80&project_id=69afdb064b82e4a68e4b84d9 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54404 - "GET /logout HTTP/1.1" 302 Found
+INFO:     127.0.0.1:54404 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54404 - "GET /static/style.css?v=11 HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:53578 - "POST /login HTTP/1.1" 302 Found
+INFO:     127.0.0.1:53578 - "GET /?error=invalid HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53578 - "GET /static/style.css?v=11 HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:60176 - "POST /login HTTP/1.1" 302 Found
+INFO:     127.0.0.1:60176 - "GET /?error=invalid HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60176 - "GET /static/style.css?v=11 HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:56924 - "POST /login HTTP/1.1" 302 Found
+INFO:     127.0.0.1:56924 - "GET /dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56924 - "GET /static/style.css?v=11 HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:56924 - "GET /api/github/config HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65198 - "GET /api/developers/pending_requests HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65198 - "GET /api/chat/messages?limit=80&project_id=69afdb064b82e4a68e4b84d9 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57163 - "GET /api/developers/pending_requests HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:53075 - "GET /api/developers/pending_requests HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:49735 - "GET /api/developers/pending_requests HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:57115 - "GET /api/developers/pending_requests HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:55365 - "GET /api/developers/pending_requests HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:56588 - "GET /api/developers/pending_requests HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:55812 - "GET /api/developers/pending_requests HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:53743 - "GET /api/developers/pending_requests HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:50679 - "GET /api/developers/pending_requests HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:63282 - "GET /api/developers/pending_requests HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:63282 - "GET /dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63282 - "GET /static/style.css?v=11 HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:63956 - "GET /static/profile_popover.js?v=2 HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:63282 - "GET /api/developers/pending_requests HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:63956 - "GET /api/github/config HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63956 - "GET /api/chat/messages?limit=80&project_id=69afdb064b82e4a68e4b84d9 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63956 - "GET /dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63282 - "GET /api/developers/pending_requests HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:63956 - "GET /api/github/config HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63956 - "GET /api/chat/messages?limit=80&project_id=69afdb064b82e4a68e4b84d9 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63956 - "GET /dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63282 - "GET /api/developers/pending_requests HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:63956 - "GET /api/github/config HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63956 - "GET /api/chat/messages?limit=80&project_id=69afdb064b82e4a68e4b84d9 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63956 - "GET /dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63282 - "GET /api/developers/pending_requests HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:63956 - "GET /api/github/config HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63956 - "GET /api/chat/messages?limit=80&project_id=69afdb064b82e4a68e4b84d9 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63956 - "GET /logout HTTP/1.1" 302 Found
+INFO:     127.0.0.1:63956 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56547 - "POST /login HTTP/1.1" 302 Found
+INFO:     127.0.0.1:56547 - "GET /dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56547 - "GET /static/style.css?v=11 HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:56547 - "GET /api/chat/messages?limit=80&project_id=69afdb064b82e4a68e4b84d9 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51555 - "GET /logout HTTP/1.1" 302 Found
+INFO:     127.0.0.1:51555 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64286 - "POST /login HTTP/1.1" 302 Found
+INFO:     127.0.0.1:64286 - "GET /?error=invalid HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54559 - "POST /login HTTP/1.1" 302 Found
+INFO:     127.0.0.1:54559 - "GET /?error=invalid HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54559 - "GET /static/style.css?v=11 HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:54559 - "GET /register HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51321 - "POST /register HTTP/1.1" 302 Found
+INFO:     127.0.0.1:51321 - "GET /register?error=exists HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65281 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60284 - "POST /login HTTP/1.1" 302 Found
+INFO:     127.0.0.1:60284 - "GET /dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60284 - "GET /static/chat.js?v=2 HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:60284 - "GET /api/github/config HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54694 - "GET /api/developers/pending_requests HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:54694 - "GET /api/chat/messages?limit=80&project_id=69afdb064b82e4a68e4b84d9 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65465 - "GET /api/developers/pending_requests HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:54513 - "GET /api/developers/pending_requests HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:53283 - "GET /api/developers/pending_requests HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:52357 - "GET /api/developers/pending_requests HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:64747 - "GET /api/developers/pending_requests HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:49669 - "GET /api/developers/pending_requests HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:60617 - "GET /api/developers/pending_requests HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:63277 - "GET /api/developers/pending_requests HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:60155 - "GET /api/developers/pending_requests HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:57351 - "GET /api/developers/pending_requests HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:51511 - "GET /api/developers/pending_requests HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:50106 - "GET /api/developers/pending_requests HTTP/1.1" 404 Not Found

@@ -5,18 +5,23 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Manager Dashboard</title>
-    <link rel="stylesheet" href="{{ url_for('static', path='style.css') }}?v=2">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <script src="{{ url_for('static', path='chat.js') }}"></script>
+    <link rel="stylesheet" href="{{ url_for('static', path='style.css') }}?v=11">
+    <script src="{{ url_for('static', path='ui_feedback.js') }}"></script>
+    <script src="{{ url_for('static', path='chat.js') }}?v=2"></script>
+    <script src="{{ url_for('static', path='profile_popover.js') }}?v=2" defer></script>
     <!-- Monaco Editor Loader -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.36.1/min/vs/loader.min.js"></script>
     <script src="{{ url_for('static', path='theme.js') }}"></script>
     <script>
+        {% if projects %}
+        window.currentProjectId = "{{ projects[0]._id }}";
+        {% else %}
         window.currentProjectId = "";
+        {% endif %}
     </script>
 </head>
 
-<body>
+<body class="app-shell manager-shell">
     <div class="app-wrapper">
 
         <header class="top-bar">
@@ -25,41 +30,122 @@
                 <div class="profile-section">
                     <a href="/developer_analytics" class="nav-link">Developer Analytics</a>
                     <span class="greeting">Hello, <strong>{{ username }}</strong></span>
-                    <div class="avatar-circle">{{ username[0].upper() }}</div>
+                    {% include 'profile_popover.html' %}
 
                     <a href="/logout" class="logout-link">Logout</a>
 
-                    <button id="theme-toggle" class="theme-toggle" aria-label="Toggle Theme" title="Toggle Theme"
-                        style="background:none; border:none; cursor:pointer; display:flex; align-items:center; justify-content:center; padding: 6px; margin-left: 8px; border-radius: 50%; transition: background 0.2s;">
-                        <img src="/static/moon.png" id="theme-icon" alt="Theme Toggle"
-                            style="width:20px;height:20px;transition:transform 0.3s;filter:invert(0.8);">
+                    <button id="theme-toggle" class="theme-toggle" aria-label="Toggle Theme" title="Toggle Theme">
+                        <img src="/static/moon.png" id="theme-icon" class="theme-icon" alt="Theme Toggle">
                     </button>
                 </div>
             </div>
         </header>
 
         <main class="main-content">
-            <div class="layout-grid">
-                <div class="creation-row"
-                    style="display: grid; grid-template-columns: 1fr 1.6fr; gap: 24px; margin-bottom: 32px;">
-                    <!-- Project Creation Panel -->
-                    <section class="panel creation-panel"
-                        style="margin-bottom: 0; background: linear-gradient(180deg, rgba(255,255,255,0.02), transparent);">
-                        <div class="panel-header"
-                            style="padding: 20px 24px; border-bottom: 1px solid var(--border-subtle);">
-                            <div style="display: flex; align-items: center; gap: 12px;">
-                                <div
-                                    style="width: 4px; height: 24px; background: linear-gradient(135deg, var(--accent-1), var(--accent-2)); border-radius: 2px;">
-                                </div>
-                                <div>
-                                    <h2 class="section-title" style="font-size: 1.3rem; margin-bottom: 4px;">New Project
-                                    </h2>
-                                    <p class="section-description" style="font-size: 0.9rem;">Create a new workspace for
-                                        your team</p>
+            <div class="layout-grid page-layout">
+                <section class="page-header page-header-split">
+                    <div class="page-header-copy">
+                        <h2 class="page-title">Manager Dashboard</h2>
+                        <p class="page-description">Create projects, assign developers, and keep the review queue under control.</p>
+                    </div>
+                    <div class="summary-strip summary-strip-manager">
+                        <article class="summary-item">
+                            <span class="summary-label">Projects</span>
+                            <strong class="summary-value">{{ projects|length }}</strong>
+                        </article>
+                        <article class="summary-item">
+                            <span class="summary-label">Developers</span>
+                            <strong class="summary-value">{{ developers|length }}</strong>
+                        </article>
+                        <article class="summary-item">
+                            <span class="summary-label">In Progress</span>
+                            <strong class="summary-value">{{ tasks|selectattr('status', 'equalto', 'in_progress')|list|length }}</strong>
+                        </article>
+                        <article class="summary-item">
+                            <span class="summary-label">In Review</span>
+                            <strong class="summary-value">{{ tasks|selectattr('status', 'equalto', 'submitted_for_review')|list|length }}</strong>
+                        </article>
+                        <article class="summary-item">
+                            <span class="summary-label">Join Requests</span>
+                            <strong class="summary-value" id="pendingRequestCount">{{ pending_developers|length }}</strong>
+                        </article>
+                    </div>
+                </section>
+
+                <section id="pendingRequestsPanel" class="panel pending-requests-panel"{% if not pending_developers %} hidden{% endif %}>
+                    <div class="panel-header">
+                        <div class="section-stack">
+                            <h2 class="section-title">Developer Join Requests</h2>
+                            <p class="section-description">Approve a developer to make them available for login and project assignment. Rejecting removes the account.</p>
+                        </div>
+                        <span id="pendingRequestBadge" class="status-indicator status-submitted">{{ pending_developers|length }} Pending</span>
+                    </div>
+                    <div id="pendingRequestList" class="pending-request-list">
+                        {% for dev in pending_developers %}
+                        <article class="pending-request-card" data-pending-username="{{ dev.username }}">
+                            <div class="pending-request-head">
+                                <div class="dev-avatar pending-request-avatar">{{ dev.username[0].upper() }}</div>
+                                <div class="pending-request-copy">
+                                    <h3 class="pending-request-name">{{ dev.username }}</h3>
+                                    <p class="pending-request-role">{{ dev.role|replace('_', ' ')|title }}</p>
                                 </div>
                             </div>
+                            <p class="pending-request-description">{{ dev.description or "No description provided." }}</p>
+                            <div class="pending-request-actions">
+                                <button type="button" class="approve-btn" onclick='approvePendingDeveloper({{ dev.username|tojson }})'>
+                                    Approve
+                                </button>
+                                <button type="button" class="reject-btn" onclick='rejectPendingDeveloper({{ dev.username|tojson }})'>
+                                    Reject
+                                </button>
+                            </div>
+                        </article>
+                        {% endfor %}
+                    </div>
+                </section>
+
+                <section class="panel github-config-panel">
+                    <div class="panel-header">
+                        <div class="section-stack">
+                            <h2 class="section-title">GitHub Integration</h2>
+                            <p class="section-description">Connect a repository for manual manager pushes and automatic sync when approved tasks are closed.</p>
                         </div>
-                        <form action="/add_project" method="post" class="creation-form" style="padding: 24px;">
+                        <span id="githubConfigBadge" class="status-indicator status-paused">Not connected</span>
+                    </div>
+                    <div class="panel-body">
+                        <form id="githubConfigForm" class="creation-form"
+                            style="padding: 0; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); align-items: end;">
+                            <div class="input-group">
+                                <label for="githubRepoInput" class="input-label">Repository</label>
+                                <input type="text" id="githubRepoInput" class="text-input" placeholder="owner/repository"
+                                    autocomplete="off" required>
+                            </div>
+                            <div class="input-group">
+                                <label for="githubTokenInput" class="input-label">Access Token</label>
+                                <input type="password" id="githubTokenInput" class="text-input"
+                                    placeholder="GitHub personal access token" autocomplete="new-password">
+                            </div>
+                            <div class="review-actions" style="grid-column: 1 / -1; margin-top: 0; justify-content: flex-start;">
+                                <button type="submit" class="submit-button" id="githubConnectBtn">Connect GitHub</button>
+                                <button type="button" class="secondary-button" onclick="loadGitHubConfig()">Refresh Status</button>
+                                <button type="button" class="reject-btn" id="githubDisconnectBtn" onclick="disconnectGitHub()">Disconnect</button>
+                            </div>
+                        </form>
+                        <p id="githubConfigHelp" class="section-description" style="margin-top: 12px;">
+                            Repository format must be <code>owner/repository</code>. Use a classic token with <code>repo</code> scope or a fine-grained token with <code>Contents: Read and write</code>. Leave the token blank after the first save to keep the current token.
+                        </p>
+                    </div>
+                </section>
+
+                <div class="creation-row dashboard-row">
+                    <section class="panel creation-panel">
+                        <div class="panel-header">
+                            <div class="section-stack">
+                                <h2 class="section-title">New Project</h2>
+                                <p class="section-description">Start a workspace and decide whether developers are chosen manually or automatically.</p>
+                            </div>
+                        </div>
+                        <form action="/add_project" method="post" class="creation-form">
                             <div class="input-group">
                                 <label for="project-title" class="input-label">Project Title</label>
                                 <input type="text" id="project-title" name="title" class="text-input"
@@ -93,6 +179,10 @@
                                                 <div class="dev-avatar">{{ dev.username[0].upper() }}</div>
                                                 <div class="dev-name">{{ dev.username }}</div>
                                                 <div class="dev-role-sub">Frontend</div>
+                                                <div class="dev-availability availability-{{ 'free' if dev.is_free else 'busy' }}">
+                                                    {{ dev.availability_label }}
+                                                </div>
+                                                <div class="dev-load">{{ dev.availability_detail }}</div>
                                             </div>
                                             {% endfor %}
                                         </div>
@@ -107,6 +197,10 @@
                                                 <div class="dev-avatar">{{ dev.username[0].upper() }}</div>
                                                 <div class="dev-name">{{ dev.username }}</div>
                                                 <div class="dev-role-sub">Backend</div>
+                                                <div class="dev-availability availability-{{ 'free' if dev.is_free else 'busy' }}">
+                                                    {{ dev.availability_label }}
+                                                </div>
+                                                <div class="dev-load">{{ dev.availability_detail }}</div>
                                             </div>
                                             {% endfor %}
                                         </div>
@@ -114,8 +208,7 @@
                                 </div>
                                 <div id="aiAssignMessage" class="ai-assign-msg" style="display: none;">
                                     <div class="ai-assign-icon">🤖</div>
-                                    <div class="ai-assign-text">AI will automatically assign the best-suited developers
-                                        based on their skills and availability.</div>
+                                    <div class="ai-assign-text">Auto-assign picks the least-busy approved frontend and backend developers.</div>
                                 </div>
                                 <!-- Hidden select to actually submit data -->
                                 <select name="assigned_developers" id="create-project-select-hidden" multiple
@@ -126,28 +219,17 @@
                                 </select>
                             </div>
 
-                            <button type="submit" class="submit-button"
-                                style="margin-top: 20px; background: linear-gradient(135deg, var(--accent-1), var(--accent-2)); padding: 12px 24px; border-radius: 8px; font-weight: 600; box-shadow: 0 4px 12px rgba(14,165,233,0.3);">
+                            <button type="submit" class="submit-button">
                                 Create Project
                             </button>
                         </form>
                     </section>
 
-                    <!-- Projects Overview Panel -->
-                    <section class="panel overview-panel"
-                        style="margin-bottom: 0; background: linear-gradient(180deg, rgba(255,255,255,0.02), transparent);">
-                        <div class="panel-header"
-                            style="padding: 20px 24px; border-bottom: 1px solid var(--border-subtle);">
-                            <div style="display: flex; align-items: center; gap: 12px;">
-                                <div
-                                    style="width: 4px; height: 24px; background: linear-gradient(135deg, var(--accent-1), var(--accent-2)); border-radius: 2px;">
-                                </div>
-                                <div>
-                                    <h2 class="section-title" style="font-size: 1.3rem; margin-bottom: 4px;">Projects
-                                        Overview</h2>
-                                    <p class="section-description" style="font-size: 0.9rem;">Manage your active
-                                        projects and teams</p>
-                                </div>
+                    <section class="panel overview-panel">
+                        <div class="panel-header">
+                            <div class="section-stack">
+                                <h2 class="section-title">Projects</h2>
+                                <p class="section-description">Review current workspaces, check status, and open project settings.</p>
                             </div>
                         </div>
                         <div class="table-wrapper">
@@ -162,31 +244,31 @@
                                                 style="font-size: 0.75rem; margin-left: 6px; opacity: 0.6;">👁</span>
                                         </th>
                                         <th>Status</th>
+                                        <th>Progress</th>
                                         <th>Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {% for project in projects %}
                                     <tr>
-                                        <td style="font-weight: 600; cursor: pointer;"
+                                        <td class="project-link-cell"
                                             onclick="window.location.href='/projects/{{ project._id }}'">
                                             {{ project.title }}
                                         </td>
-                                        <td class="description-cell" style="cursor: pointer;"
+                                        <td class="description-cell project-link-cell"
                                             onclick="window.location.href='/projects/{{ project._id }}'">
                                             {{ project.description or "—" }}
                                         </td>
                                         <td>
-                                            <div class="dev-col-content">
-                                                {% for dev in project.assigned_developers %}
-                                                <span class="category-badge"
-                                                    style="background: rgba(14, 165, 233, 0.1); color: var(--accent-1); margin-right: 4px; margin-bottom: 4px; display: inline-block;">
-                                                    {{ dev }}
+                                            <div class="dev-col-content chip-list">
+                                                {% for dev in project.assigned_developer_details %}
+                                                <span class="developer-chip" title="{{ dev.availability_detail }}">
+                                                    {{ dev.username }} ({{ dev.availability_label }})
                                                 </span>
                                                 {% endfor %}
                                             </div>
                                             <span class="dev-col-hidden"
-                                                style="display: none; color: var(--text-muted); font-size: 0.8rem;">{{
+                                                style="display: none;">{{
                                                 project.assigned_developers|length }} dev(s)</span>
                                         </td>
                                         <td>
@@ -195,7 +277,22 @@
                                             </span>
                                         </td>
                                         <td>
-                                            <div style="display: flex; gap: 8px; align-items: center;">
+                                            <div class="project-progress-cell">
+                                                <div class="project-progress-copy">
+                                                    <strong>{{ project.completion_percent }}%</strong>
+                                                    {% if project.total_tasks %}
+                                                    <span>{{ project.done_tasks }}/{{ project.total_tasks }} done</span>
+                                                    {% else %}
+                                                    <span>No tasks yet</span>
+                                                    {% endif %}
+                                                </div>
+                                                <div class="progress-track">
+                                                    <span class="progress-fill" style="width: {{ project.completion_percent }}%;"></span>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <div class="table-actions">
                                                 <button type="button" class="view-code-btn"
                                                     data-target="{{ project._id }}" data-title="{{ project.title }}"
                                                     data-desc="{{ project.description or '' }}"
@@ -205,7 +302,6 @@
                                                     Edit
                                                 </button>
                                                 <button type="button" class="delete-btn" title="Delete Project"
-                                                    style="background: #ef4444; color: white; border-radius: 4px; border: none; padding: 4px 8px;"
                                                     onclick="openDeleteProjectModal('{{ project._id }}', '{{ project.title|escape }}')">
                                                     &times;
                                                 </button>
@@ -218,6 +314,11 @@
                                         </td>
                                     </tr>
                                     {% endfor %}
+                                    {% if not projects %}
+                                    <tr>
+                                        <td colspan="6" class="inline-empty-state">No projects created yet.</td>
+                                    </tr>
+                                    {% endif %}
                                 </tbody>
                             </table>
                         </div>
@@ -255,6 +356,10 @@
                 </div>
                 <div class="modal-body" style="padding: 0;">
                     <div id="monaco-editor-container" style="width: 100%; height: 500px;"></div>
+                </div>
+                <div class="review-actions" style="padding: 16px 20px; margin-top: 0; justify-content: flex-end; border-top: 1px solid #333;">
+                    <button type="button" class="secondary-button" onclick="pushCurrentTaskToGitHub()">Push to GitHub</button>
+                    <button type="button" class="secondary-button" onclick="openCurrentTaskGitHubUrl()">View on GitHub</button>
                 </div>
                 <!-- Review Section -->
                 <div id="reviewSection" class="modal-review-section"
@@ -303,6 +408,10 @@
                                             <div class="dev-avatar">{{ dev.username[0].upper() }}</div>
                                             <div class="dev-name">{{ dev.username }}</div>
                                             <div class="dev-role-sub">Frontend</div>
+                                            <div class="dev-availability availability-{{ 'free' if dev.is_free else 'busy' }}">
+                                                {{ dev.availability_label }}
+                                            </div>
+                                            <div class="dev-load">{{ dev.availability_detail }}</div>
                                         </div>
                                         {% endfor %}
                                     </div>
@@ -317,6 +426,10 @@
                                             <div class="dev-avatar">{{ dev.username[0].upper() }}</div>
                                             <div class="dev-name">{{ dev.username }}</div>
                                             <div class="dev-role-sub">Backend</div>
+                                            <div class="dev-availability availability-{{ 'free' if dev.is_free else 'busy' }}">
+                                                {{ dev.availability_label }}
+                                            </div>
+                                            <div class="dev-load">{{ dev.availability_detail }}</div>
                                         </div>
                                         {% endfor %}
                                     </div>
@@ -825,8 +938,17 @@
             let liveEditor = null;
             let managerWebSocket = null;
             let currentLiveTaskId = null;
+            let githubConfigState = { configured: false, repo: '', source: 'unset', has_token: false };
 
             let devColumnVisible = true;
+            document.querySelectorAll('.assign-toggle-btn').forEach((btn) => {
+                btn.textContent = btn.dataset.mode === 'manual' ? 'Manual assignment' : 'Auto assign';
+            });
+            const aiAssignText = document.querySelector('#aiAssignMessage .ai-assign-text');
+            if (aiAssignText) {
+                aiAssignText.textContent = 'Automatic assignment picks the least-busy approved frontend and backend developers.';
+            }
+            document.getElementById('devColToggle').textContent = 'Hide';
             function toggleDevColumn() {
                 devColumnVisible = !devColumnVisible;
                 document.querySelectorAll('.dev-col-content').forEach(el => {
@@ -835,7 +957,124 @@
                 document.querySelectorAll('.dev-col-hidden').forEach(el => {
                     el.style.display = devColumnVisible ? 'none' : 'inline';
                 });
-                document.getElementById('devColToggle').textContent = devColumnVisible ? '👁' : '👁‍🗨';
+                document.getElementById('devColToggle').textContent = devColumnVisible ? 'Hide' : 'Show';
+            }
+
+            function setGitHubConfigState(config) {
+                githubConfigState = Object.assign({ configured: false, repo: '', source: 'unset', has_token: false }, config || {});
+                const badge = document.getElementById('githubConfigBadge');
+                const repoInput = document.getElementById('githubRepoInput');
+                const tokenInput = document.getElementById('githubTokenInput');
+                const helpText = document.getElementById('githubConfigHelp');
+                const disconnectBtn = document.getElementById('githubDisconnectBtn');
+                const connectBtn = document.getElementById('githubConnectBtn');
+
+                if (repoInput && githubConfigState.repo) {
+                    repoInput.value = githubConfigState.repo;
+                }
+                if (tokenInput) {
+                    tokenInput.value = '';
+                    tokenInput.placeholder = githubConfigState.has_token
+                        ? 'Leave blank to keep the current token'
+                        : 'GitHub personal access token';
+                }
+                if (badge) {
+                    badge.textContent = githubConfigState.configured
+                        ? `Connected${githubConfigState.source === 'env' ? ' (env)' : ''}`
+                        : 'Not connected';
+                    badge.className = `status-indicator ${githubConfigState.configured ? 'status-done' : 'status-paused'}`;
+                }
+                if (helpText) {
+                    helpText.innerHTML = githubConfigState.configured
+                        ? `Repository <code>${githubConfigState.repo}</code> is ready for manager pushes.${githubConfigState.source === 'env' ? ' This connection comes from server environment variables.' : ''} Token must allow repository content writes.`
+                        : 'Repository format must be <code>owner/repository</code>. Use a classic token with <code>repo</code> scope or a fine-grained token with <code>Contents: Read and write</code>. Leave the token blank after the first save to keep the current token.';
+                }
+                if (disconnectBtn) {
+                    disconnectBtn.style.display = githubConfigState.source === 'database' ? '' : 'none';
+                }
+                if (connectBtn) {
+                    connectBtn.textContent = githubConfigState.configured ? 'Save GitHub Settings' : 'Connect GitHub';
+                }
+            }
+
+            async function loadGitHubConfig() {
+                try {
+                    const response = await fetch('/api/github/config');
+                    const data = await response.json().catch(() => ({}));
+                    if (!response.ok) {
+                        window.appNotice(data.detail || 'Unable to load GitHub configuration', { type: 'error' });
+                        return;
+                    }
+                    setGitHubConfigState(data);
+                } catch (error) {
+                    console.error(error);
+                    window.appNotice('Unable to load GitHub configuration', { type: 'error' });
+                }
+            }
+
+            async function saveGitHubConfig(event) {
+                event.preventDefault();
+                const repoInput = document.getElementById('githubRepoInput');
+                const tokenInput = document.getElementById('githubTokenInput');
+                const connectBtn = document.getElementById('githubConnectBtn');
+                const originalLabel = connectBtn.textContent;
+
+                connectBtn.disabled = true;
+                connectBtn.textContent = 'Connecting...';
+                try {
+                    const response = await fetch('/api/github/config', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            repo: repoInput.value.trim(),
+                            token: tokenInput.value
+                        })
+                    });
+                    const data = await response.json().catch(() => ({}));
+                    if (!response.ok) {
+                        window.appNotice(data.detail || 'Unable to connect GitHub', { type: 'error' });
+                        return;
+                    }
+                    setGitHubConfigState({
+                        configured: true,
+                        repo: data.repo,
+                        source: 'database',
+                        has_token: true,
+                        updated_at: data.updated_at,
+                        updated_by: data.updated_by
+                    });
+                    window.queueAppNotice(data.message || 'GitHub connected successfully.', { type: 'success' });
+                } catch (error) {
+                    console.error(error);
+                    window.appNotice('Unable to connect GitHub', { type: 'error' });
+                } finally {
+                    connectBtn.disabled = false;
+                    connectBtn.textContent = originalLabel;
+                }
+            }
+
+            async function disconnectGitHub() {
+                const confirmed = await window.appConfirm({
+                    title: 'Disconnect GitHub?',
+                    message: 'Managers will no longer be able to push task code until a repository is connected again.',
+                    confirmText: 'Disconnect',
+                    tone: 'danger'
+                });
+                if (!confirmed) return;
+
+                try {
+                    const response = await fetch('/api/github/config', { method: 'DELETE' });
+                    const data = await response.json().catch(() => ({}));
+                    if (!response.ok) {
+                        window.appNotice(data.detail || 'Unable to disconnect GitHub', { type: 'error' });
+                        return;
+                    }
+                    setGitHubConfigState({ configured: false, repo: '', source: 'unset', has_token: false });
+                    window.queueAppNotice(data.message || 'GitHub disconnected.', { type: 'success' });
+                } catch (error) {
+                    console.error(error);
+                    window.appNotice('Unable to disconnect GitHub', { type: 'error' });
+                }
             }
 
             function setAssignMode(mode) {
@@ -1019,15 +1258,15 @@
 
                     const data = await res.json();
                     if (res.ok) {
-                        alert('Task approved and marked as done!');
+                        window.queueAppNotice(data.message || 'Task approved and marked as done!', { type: 'success' });
                         closeCodeModal();
                         window.location.reload();
                     } else {
-                        alert('Error: ' + (data.detail || 'Failed to approve task'));
+                        window.appNotice(data.detail || 'Failed to approve task', { type: 'error' });
                     }
                 } catch (e) {
                     console.error(e);
-                    alert('Error approving task');
+                    window.appNotice('Error approving task', { type: 'error' });
                 }
             }
 
@@ -1036,7 +1275,7 @@
 
                 const comments = document.getElementById('reviewComments').value.trim();
                 if (!comments) {
-                    alert('Please provide comments when rejecting a task.');
+                    window.appNotice('Please provide comments when rejecting a task.', { type: 'warning' });
                     return;
                 }
 
@@ -1049,15 +1288,137 @@
 
                     const data = await res.json();
                     if (res.ok) {
-                        alert('Task rejected and reassigned to developer with your comments.');
+                        window.queueAppNotice('Task rejected and reassigned to developer with your comments.', { type: 'success' });
                         closeCodeModal();
                         window.location.reload();
                     } else {
-                        alert('Error: ' + (data.detail || 'Failed to reject task'));
+                        window.appNotice(data.detail || 'Failed to reject task', { type: 'error' });
                     }
                 } catch (e) {
                     console.error(e);
-                    alert('Error rejecting task');
+                    window.appNotice('Error rejecting task', { type: 'error' });
+                }
+            }
+
+            async function approvePendingDeveloper(username) {
+                const confirmed = window.appConfirm
+                    ? await window.appConfirm({
+                        title: 'Approve developer?',
+                        message: `${username} will be able to sign in and will appear in assignment lists.`,
+                        confirmText: 'Approve developer',
+                        tone: 'success'
+                    })
+                    : window.confirm(`Approve ${username}?`);
+                if (!confirmed) return;
+
+                try {
+                    const response = await fetch(`/api/developers/${encodeURIComponent(username)}/approve`, { method: 'POST' });
+                    const data = await response.json().catch(() => ({}));
+                    if (!response.ok) {
+                        window.appNotice(data.detail || 'Failed to approve developer', { type: 'error' });
+                        return;
+                    }
+                    window.queueAppNotice(data.message || 'Developer approved.', { type: 'success' });
+                    window.location.reload();
+                } catch (error) {
+                    console.error(error);
+                    window.appNotice('Failed to approve developer', { type: 'error' });
+                }
+            }
+
+            async function rejectPendingDeveloper(username) {
+                const confirmed = window.appConfirm
+                    ? await window.appConfirm({
+                        title: 'Reject developer?',
+                        message: `${username} will be removed and will not be available for assignment.`,
+                        confirmText: 'Reject developer',
+                        tone: 'danger'
+                    })
+                    : window.confirm(`Reject ${username}?`);
+                if (!confirmed) return;
+
+                try {
+                    const response = await fetch(`/api/developers/${encodeURIComponent(username)}/reject`, { method: 'POST' });
+                    const data = await response.json().catch(() => ({}));
+                    if (!response.ok) {
+                        window.appNotice(data.detail || 'Failed to reject developer', { type: 'error' });
+                        return;
+                    }
+                    window.queueAppNotice(data.message || 'Developer rejected.', { type: 'success' });
+                    window.location.reload();
+                } catch (error) {
+                    console.error(error);
+                    window.appNotice('Failed to reject developer', { type: 'error' });
+                }
+            }
+
+            function escapePendingHtml(value) {
+                const div = document.createElement('div');
+                div.textContent = value == null ? '' : String(value);
+                return div.innerHTML;
+            }
+
+            function renderPendingDeveloperRequests(requests) {
+                const panel = document.getElementById('pendingRequestsPanel');
+                const list = document.getElementById('pendingRequestList');
+                const count = document.getElementById('pendingRequestCount');
+                const badge = document.getElementById('pendingRequestBadge');
+                if (!panel || !list || !count || !badge) return;
+
+                count.textContent = String(requests.length);
+                badge.textContent = `${requests.length} Pending`;
+                panel.hidden = requests.length === 0;
+
+                list.innerHTML = requests.map((dev) => `
+                    <article class="pending-request-card" data-pending-username="${escapePendingHtml(dev.username)}">
+                        <div class="pending-request-head">
+                            <div class="dev-avatar pending-request-avatar">${escapePendingHtml((dev.username || '?').charAt(0).toUpperCase())}</div>
+                            <div class="pending-request-copy">
+                                <h3 class="pending-request-name">${escapePendingHtml(dev.username)}</h3>
+                                <p class="pending-request-role">${escapePendingHtml((dev.role || '').replace(/_/g, ' '))}</p>
+                            </div>
+                        </div>
+                        <p class="pending-request-description">${escapePendingHtml(dev.description || 'No description provided.')}</p>
+                        <div class="pending-request-actions">
+                            <button type="button" class="approve-btn" data-username="${escapePendingHtml(dev.username)}" onclick="approvePendingDeveloper(this.dataset.username)">
+                                Approve
+                            </button>
+                            <button type="button" class="reject-btn" data-username="${escapePendingHtml(dev.username)}" onclick="rejectPendingDeveloper(this.dataset.username)">
+                                Reject
+                            </button>
+                        </div>
+                    </article>
+                `).join('');
+            }
+
+            async function refreshPendingDeveloperRequests(showNotificationForNew = true) {
+                try {
+                    const response = await fetch('/api/developers/pending_requests', { credentials: 'same-origin' });
+                    const data = await response.json().catch(() => ({}));
+                    if (!response.ok) {
+                        return;
+                    }
+                    const requests = Array.isArray(data.requests) ? data.requests : [];
+                    const previousUsernames = new Set(
+                        Array.from(document.querySelectorAll('[data-pending-username]'))
+                            .map((card) => card.dataset.pendingUsername)
+                            .filter(Boolean)
+                    );
+                    renderPendingDeveloperRequests(requests);
+
+                    if (showNotificationForNew && requests.length) {
+                        const newUsernames = requests
+                            .map((request) => request.username)
+                            .filter((username) => username && !previousUsernames.has(username));
+                        if (newUsernames.length) {
+                            const label = newUsernames.length === 1
+                                ? `${newUsernames[0]} requested developer access.`
+                                : `${newUsernames.length} new developer requests are waiting for review.`;
+                            window.appNotice(label, { type: 'info', duration: 4200 });
+                        }
+                    }
+                } catch (error) {
+                    console.error('Pending developer refresh failed:', error);
                 }
             }
 
@@ -1066,14 +1427,45 @@
                     const response = await fetch(`/api/task_github_url/${taskId}`);
                     const data = await response.json().catch(() => ({}));
                     if (!response.ok) {
-                        alert('Error: ' + (data.detail || 'Code not available on GitHub'));
+                        window.appNotice(data.detail || 'Code not available on GitHub', { type: 'error' });
                         return;
                     }
                     if (data.url) window.open(data.url, '_blank', 'noopener');
                 } catch (e) {
                     console.error(e);
-                    alert('Error opening GitHub link');
+                    window.appNotice('Error opening GitHub link', { type: 'error' });
                 }
+            }
+
+            async function pushCurrentTaskToGitHub() {
+                if (!currentReviewTaskId) {
+                    window.appNotice('Open a task first before pushing code to GitHub.', { type: 'warning' });
+                    return;
+                }
+
+                try {
+                    const response = await fetch(`/api/tasks/${currentReviewTaskId}/push_github`, { method: 'POST' });
+                    const data = await response.json().catch(() => ({}));
+                    if (!response.ok) {
+                        window.appNotice(data.detail || 'Failed to push code to GitHub', { type: 'error' });
+                        return;
+                    }
+                    window.queueAppNotice(data.message || 'Code pushed to GitHub.', { type: 'success' });
+                    if (data.url) {
+                        window.open(data.url, '_blank', 'noopener');
+                    }
+                } catch (error) {
+                    console.error(error);
+                    window.appNotice('Failed to push code to GitHub', { type: 'error' });
+                }
+            }
+
+            function openCurrentTaskGitHubUrl() {
+                if (!currentReviewTaskId) {
+                    window.appNotice('Open a task first before opening its GitHub link.', { type: 'warning' });
+                    return;
+                }
+                openTaskGitHubUrl(currentReviewTaskId);
             }
 
             function openLiveCodeView(taskId, title, taskType) {
@@ -1214,6 +1606,11 @@
                     closeLiveCodeModal();
                 }
             }
+
+            document.getElementById('githubConfigForm').addEventListener('submit', saveGitHubConfig);
+            loadGitHubConfig();
+            refreshPendingDeveloperRequests(false);
+            window.setInterval(() => refreshPendingDeveloperRequests(true), 10000);
         </script>
     </div>
 

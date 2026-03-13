@@ -13,13 +13,21 @@ async def save_version(task_id: str, code: str, username: str):
     )
     
     if last_version and last_version.get("code") == code:
+        print(f"[DEBUG] Skipping save - code is identical to last version for task_id: {task_id}")
         return # No change, don't save duplicate
-        
+    
+    print(f"[DEBUG] Creating CodeHistory entry - task_id: {task_id}, code length: {len(code)}, username: {username}")
+    
+    # Use current local time instead of UTC
+    from datetime import datetime as dt
+    current_time = dt.now()
+    
     history_entry = CodeHistory(
         task_id=task_id,
         code=code,
-        timestamp=datetime.utcnow(),
+        timestamp=current_time,
         username=username
     )
     
-    await db.code_history.insert_one(history_entry.dict())
+    result = await db.code_history.insert_one(history_entry.dict())
+    print(f"[DEBUG] CodeHistory inserted with ID: {result.inserted_id}, timestamp: {current_time}")

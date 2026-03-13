@@ -1,0 +1,163 @@
+C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\app\services\assignment.py:8: FutureWarning: 
+
+All support for the `google.generativeai` package has ended. It will no longer be receiving 
+updates or bug fixes. Please switch to the `google.genai` package as soon as possible.
+See README for more details:
+
+https://github.com/google-gemini/deprecated-generative-ai-python/blob/main/README.md
+
+  import google.generativeai as genai
+INFO:     Started server process [14172]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://127.0.0.1:8004 (Press CTRL+C to quit)
+INFO:     127.0.0.1:52838 - "WebSocket /ws/chat?project_id=69afdb064b82e4a68e4b84d9" [accepted]
+INFO:     connection open
+INFO:     connection closed
+INFO:     127.0.0.1:54398 - "WebSocket /ws/chat?project_id=69afdb064b82e4a68e4b84d9" [accepted]
+INFO:     connection open
+INFO:     connection closed
+INFO:     127.0.0.1:49323 - "WebSocket /ws/chat?project_id=69afdb064b82e4a68e4b84d9" [accepted]
+INFO:     connection open
+INFO:     connection closed
+INFO:     127.0.0.1:55329 - "WebSocket /ws/chat?project_id=69afdb064b82e4a68e4b84d9" [accepted]
+INFO:     connection open
+INFO:     connection closed
+INFO:     127.0.0.1:50340 - "WebSocket /ws/chat?project_id=69afdb064b82e4a68e4b84d9" [accepted]
+INFO:     connection open
+INFO:     connection closed
+INFO:     127.0.0.1:60623 - "WebSocket /ws/chat?project_id=69afdb064b82e4a68e4b84d9" [accepted]
+INFO:     connection open
+INFO:     connection closed
+INFO:     127.0.0.1:58095 - "WebSocket /ws/chat?project_id=69afdb064b82e4a68e4b84d9" [accepted]
+INFO:     connection open
+INFO:     connection closed
+INFO:     127.0.0.1:65055 - "WebSocket /ws/chat?project_id=69afdb064b82e4a68e4b84d9" [accepted]
+INFO:     connection open
+INFO:     connection closed
+INFO:     127.0.0.1:55627 - "WebSocket /ws/chat?project_id=69afdb064b82e4a68e4b84d9" [accepted]
+INFO:     connection open
+INFO:     connection closed
+INFO:     127.0.0.1:63650 - "WebSocket /ws/chat?project_id=69afdb064b82e4a68e4b84d9" [accepted]
+INFO:     connection open
+INFO:     connection closed
+INFO:     127.0.0.1:60277 - "WebSocket /ws/chat?project_id=69afdb064b82e4a68e4b84d9" [accepted]
+INFO:     connection open
+INFO:     connection closed
+INFO:     127.0.0.1:57507 - "WebSocket /ws/chat?project_id=69afedfce69f02ce714397d4" [accepted]
+INFO:     connection open
+INFO:     connection closed
+INFO:     127.0.0.1:59558 - "WebSocket /ws/chat?project_id=69afdb064b82e4a68e4b84d9" [accepted]
+INFO:     connection open
+INFO:     connection closed
+INFO:     127.0.0.1:60547 - "WebSocket /ws/chat?project_id=69afdb064b82e4a68e4b84d9" [accepted]
+INFO:     connection open
+INFO:     connection closed
+INFO:     127.0.0.1:64545 - "WebSocket /ws/chat?project_id=69afdb064b82e4a68e4b84d9" [accepted]
+INFO:     connection open
+INFO:     connection closed
+INFO:     127.0.0.1:52975 - "WebSocket /ws/chat?project_id=69afdb064b82e4a68e4b84d9" [accepted]
+INFO:     connection open
+INFO:     connection closed
+INFO:     127.0.0.1:53176 - "WebSocket /ws/chat?project_id=69afdb064b82e4a68e4b84d9" [accepted]
+INFO:     connection open
+INFO:     connection closed
+INFO:     127.0.0.1:52743 - "WebSocket /ws/chat?project_id=69afedfce69f02ce714397d4" [accepted]
+INFO:     connection open
+INFO:     connection closed
+INFO:     127.0.0.1:61224 - "WebSocket /ws/chat?project_id=69afdb064b82e4a68e4b84d9" [accepted]
+INFO:     connection open
+INFO:     connection closed
+INFO:     127.0.0.1:50664 - "WebSocket /ws/chat?project_id=69afdb064b82e4a68e4b84d9" [accepted]
+INFO:     connection open
+INFO:     connection closed
+INFO:     127.0.0.1:62511 - "WebSocket /ws/chat?project_id=69afdb064b82e4a68e4b84d9" [accepted]
+INFO:     connection open
+INFO:     connection closed
+INFO:     127.0.0.1:53040 - "WebSocket /ws/chat?project_id=69afdb064b82e4a68e4b84d9" [accepted]
+INFO:     connection open
+INFO:     connection closed
+INFO:     127.0.0.1:57246 - "WebSocket /ws/chat?project_id=69afdb064b82e4a68e4b84d9" [accepted]
+INFO:     connection open
+INFO:     connection closed
+INFO:     127.0.0.1:64110 - "WebSocket /ws/chat?project_id=69afdb064b82e4a68e4b84d9" [accepted]
+INFO:     connection open
+INFO:     connection closed
+INFO:     127.0.0.1:54146 - "WebSocket /ws/chat?project_id=69afdb064b82e4a68e4b84d9" [accepted]
+INFO:     connection open
+INFO:     connection closed
+INFO:     127.0.0.1:64310 - "WebSocket /ws/chat?project_id=69afdb064b82e4a68e4b84d9" [accepted]
+INFO:     connection open
+INFO:     connection closed
+INFO:     127.0.0.1:61786 - "WebSocket /ws/chat?project_id=69afdb064b82e4a68e4b84d9" [accepted]
+INFO:     connection open
+INFO:     connection closed
+INFO:     127.0.0.1:61661 - "WebSocket /ws/chat?project_id=69afdb064b82e4a68e4b84d9" [accepted]
+INFO:     connection open
+INFO:     connection closed
+INFO:     127.0.0.1:58353 - "WebSocket /ws/chat?project_id=69afdb064b82e4a68e4b84d9" [accepted]
+INFO:     connection open
+INFO:     connection closed
+INFO:     127.0.0.1:52612 - "WebSocket /ws/chat?project_id=69afdb064b82e4a68e4b84d9" [accepted]
+INFO:     connection open
+INFO:     connection closed
+INFO:     127.0.0.1:58546 - "WebSocket /ws/chat?project_id=69afdb064b82e4a68e4b84d9" [accepted]
+INFO:     connection open
+INFO:     connection closed
+INFO:     127.0.0.1:57759 - "WebSocket /ws/chat?project_id=69afdb064b82e4a68e4b84d9" [accepted]
+INFO:     connection open
+INFO:     connection closed
+INFO:     127.0.0.1:51676 - "WebSocket /ws/chat?project_id=69b13cc2edcd0aa2a45e0def" [accepted]
+INFO:     connection open
+INFO:     connection closed
+INFO:     127.0.0.1:63273 - "WebSocket /ws/chat?project_id=69afdb064b82e4a68e4b84d9" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:54203 - "WebSocket /ws/chat?project_id=69b13cc2edcd0aa2a45e0def" [accepted]
+INFO:     connection open
+INFO:     connection closed
+INFO:     127.0.0.1:52973 - "WebSocket /ws/manager/69b13cd4edcd0aa2a45e0df0" 403
+INFO:     connection rejected (403 Forbidden)
+INFO:     connection closed
+INFO:     connection closed
+INFO:     127.0.0.1:52190 - "WebSocket /ws/chat?project_id=69b13cc2edcd0aa2a45e0def" [accepted]
+INFO:     connection open
+INFO:     connection closed
+INFO:     127.0.0.1:51592 - "WebSocket /ws/chat?project_id=69afdb064b82e4a68e4b84d9" [accepted]
+INFO:     connection open
+INFO:     connection closed
+INFO:     127.0.0.1:63667 - "WebSocket /ws/chat?project_id=69afdb064b82e4a68e4b84d9" [accepted]
+INFO:     connection open
+INFO:     connection closed
+INFO:     127.0.0.1:60422 - "WebSocket /ws/chat?project_id=69afdb064b82e4a68e4b84d9" [accepted]
+INFO:     connection open
+INFO:     connection closed
+INFO:     127.0.0.1:50721 - "WebSocket /ws/chat?project_id=69afdb064b82e4a68e4b84d9" [accepted]
+INFO:     connection open
+INFO:     connection closed
+INFO:     127.0.0.1:55002 - "WebSocket /ws/chat?project_id=69afdb064b82e4a68e4b84d9" [accepted]
+INFO:     connection open
+INFO:     connection closed
+INFO:     127.0.0.1:59204 - "WebSocket /ws/chat?project_id=69afdb064b82e4a68e4b84d9" [accepted]
+INFO:     connection open
+INFO:     connection closed
+INFO:     127.0.0.1:54492 - "WebSocket /ws/chat?project_id=69afdb064b82e4a68e4b84d9" [accepted]
+INFO:     connection open
+INFO:     connection closed
+INFO:     127.0.0.1:60514 - "WebSocket /ws/chat?project_id=69afdb064b82e4a68e4b84d9" [accepted]
+INFO:     connection open
+INFO:     connection closed
+INFO:     127.0.0.1:60177 - "WebSocket /ws/chat?project_id=69afdb064b82e4a68e4b84d9" [accepted]
+INFO:     connection open
+INFO:     connection closed
+INFO:     127.0.0.1:61059 - "WebSocket /ws/chat?project_id=69afdb064b82e4a68e4b84d9" [accepted]
+INFO:     connection open
+INFO:     connection closed
+INFO:     127.0.0.1:61342 - "WebSocket /ws/chat?project_id=69afdb064b82e4a68e4b84d9" [accepted]
+INFO:     connection open
+INFO:     connection closed
+INFO:     127.0.0.1:58268 - "WebSocket /ws/chat?project_id=69afdb064b82e4a68e4b84d9" [accepted]
+INFO:     connection open
+INFO:     connection closed
+INFO:     127.0.0.1:57462 - "WebSocket /ws/chat?project_id=69afdb064b82e4a68e4b84d9" [accepted]
+INFO:     connection open
+INFO:     connection closed

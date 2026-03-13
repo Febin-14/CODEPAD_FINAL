@@ -5,27 +5,28 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Developer Analytics | CodePad</title>
-    <link rel="stylesheet" href="{{ url_for('static', path='style.css') }}?v=2">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', path='style.css') }}?v=11">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script src="{{ url_for('static', path='ui_feedback.js') }}"></script>
     <script src="{{ url_for('static', path='theme.js') }}"></script>
+    <script src="{{ url_for('static', path='profile_popover.js') }}?v=2" defer></script>
 </head>
 
-<body>
+<body class="app-shell analytics-shell">
     <div class="app-wrapper">
 
     <header class="top-bar">
             <div class="header-container">
                 <h1 class="brand-title">CodePad</h1>
                 <div class="profile-section">
-                    <a href="/dashboard" class="nav-link">Dashboard</a>
+                    <a href="/dashboard" class="nav-link">Back to Dashboard</a>
                     <span class="greeting">Hello, <strong>{{ username }}</strong></span>
-                    <div class="avatar-circle">{{ username[0].upper() }}</div>
+                    {% include 'profile_popover.html' %}
                     
                     <a href="/logout" class="logout-link">Logout</a>
                     
-                    <button id="theme-toggle" class="theme-toggle" aria-label="Toggle Theme" title="Toggle Theme" style="background:none; border:none; cursor:pointer; display:flex; align-items:center; justify-content:center; padding: 6px; margin-left: 8px; border-radius: 50%; transition: background 0.2s;">
-                        <img src="/static/moon.png" id="theme-icon" alt="Theme Toggle" style="width:20px;height:20px;transition:transform 0.3s;filter:invert(0.8);">
+                    <button id="theme-toggle" class="theme-toggle" aria-label="Toggle Theme" title="Toggle Theme">
+                        <img src="/static/moon.png" id="theme-icon" class="theme-icon" alt="Theme Toggle">
                     </button>
                 </div>
             </div>

@@ -1,0 +1,719 @@
+C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\app\services\assignment.py:8: FutureWarning: 
+
+All support for the `google.generativeai` package has ended. It will no longer be receiving 
+updates or bug fixes. Please switch to the `google.genai` package as soon as possible.
+See README for more details:
+
+https://github.com/google-gemini/deprecated-generative-ai-python/blob/main/README.md
+
+  import google.generativeai as genai
+INFO:     Started server process [23712]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://127.0.0.1:8002 (Press CTRL+C to quit)
+INFO:     127.0.0.1:57966 - "WebSocket /ws/chat?project_id=69afdb064b82e4a68e4b84d9" [accepted]
+INFO:     connection open
+INFO:     connection closed
+INFO:     127.0.0.1:57221 - "WebSocket /ws/chat?project_id=69afdb064b82e4a68e4b84d9" [accepted]
+INFO:     connection open
+INFO:     connection closed
+INFO:     127.0.0.1:60009 - "WebSocket /ws/chat?project_id=69afdb064b82e4a68e4b84d9" [accepted]
+INFO:     connection open
+INFO:     connection closed
+INFO:     127.0.0.1:63572 - "WebSocket /ws/chat?project_id=69afdb064b82e4a68e4b84d9" [accepted]
+INFO:     connection open
+INFO:     connection closed
+INFO:     127.0.0.1:54396 - "WebSocket /ws/chat?project_id=69afdb064b82e4a68e4b84d9" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:61825 - "WebSocket /ws/manager/69afdb294b82e4a68e4b84da" 403
+INFO:     connection rejected (403 Forbidden)
+INFO:     connection closed
+INFO:     127.0.0.1:62000 - "WebSocket /api/run_python_ws" [accepted]
+INFO:     connection open
+INFO:     connection closed
+INFO:     127.0.0.1:62422 - "WebSocket /api/run_python_ws" [accepted]
+INFO:     connection open
+INFO:     connection closed
+INFO:     connection closed
+Traceback (most recent call last):
+  File "C:\Python313\Lib\asyncio\tasks.py", line 507, in wait_for
+    return await fut
+           ^^^^^^^^^
+asyncio.exceptions.CancelledError
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\app\routes\auth.py", line 621, in run_python_ws
+    returncode = await asyncio.wait_for(loop.run_in_executor(None, wait_process), timeout=RUN_PYTHON_TIMEOUT)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python313\Lib\asyncio\tasks.py", line 506, in wait_for
+    async with timeouts.timeout(timeout):
+               ~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "C:\Python313\Lib\asyncio\timeouts.py", line 116, in __aexit__
+    raise TimeoutError from exc_val
+TimeoutError
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\app\routes\auth.py", line 625, in run_python_ws
+    await websocket.send_json({"type": "timeout", "message": f"Execution timed out after {RUN_PYTHON_TIMEOUT} seconds."})
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\starlette\websockets.py", line 176, in send_json
+    await self.send({"type": "websocket.send", "text": text})
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\starlette\websockets.py", line 86, in send
+    await self._send(message)
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\starlette\_exception_handler.py", line 39, in sender
+    await send(message)
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\uvicorn\protocols\websockets\websockets_impl.py", line 357, in asgi_send
+    raise RuntimeError(msg % message_type)
+RuntimeError: Unexpected ASGI message 'websocket.send', after sending 'websocket.close' or response already completed.
+ERROR:    Exception in ASGI application
+Traceback (most recent call last):
+  File "C:\Python313\Lib\asyncio\tasks.py", line 507, in wait_for
+    return await fut
+           ^^^^^^^^^
+asyncio.exceptions.CancelledError
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\app\routes\auth.py", line 621, in run_python_ws
+    returncode = await asyncio.wait_for(loop.run_in_executor(None, wait_process), timeout=RUN_PYTHON_TIMEOUT)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python313\Lib\asyncio\tasks.py", line 506, in wait_for
+    async with timeouts.timeout(timeout):
+               ~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "C:\Python313\Lib\asyncio\timeouts.py", line 116, in __aexit__
+    raise TimeoutError from exc_val
+TimeoutError
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\app\routes\auth.py", line 625, in run_python_ws
+    await websocket.send_json({"type": "timeout", "message": f"Execution timed out after {RUN_PYTHON_TIMEOUT} seconds."})
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\starlette\websockets.py", line 176, in send_json
+    await self.send({"type": "websocket.send", "text": text})
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\starlette\websockets.py", line 86, in send
+    await self._send(message)
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\starlette\_exception_handler.py", line 39, in sender
+    await send(message)
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\uvicorn\protocols\websockets\websockets_impl.py", line 357, in asgi_send
+    raise RuntimeError(msg % message_type)
+RuntimeError: Unexpected ASGI message 'websocket.send', after sending 'websocket.close' or response already completed.
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\app\routes\auth.py", line 638, in run_python_ws
+    await websocket.send_json({"type": "error", "message": str(e) or repr(e)})
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\starlette\websockets.py", line 176, in send_json
+    await self.send({"type": "websocket.send", "text": text})
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\starlette\websockets.py", line 86, in send
+    await self._send(message)
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\starlette\_exception_handler.py", line 39, in sender
+    await send(message)
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\uvicorn\protocols\websockets\websockets_impl.py", line 357, in asgi_send
+    raise RuntimeError(msg % message_type)
+RuntimeError: Unexpected ASGI message 'websocket.send', after sending 'websocket.close' or response already completed.
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\uvicorn\protocols\websockets\websockets_impl.py", line 244, in run_asgi
+    result = await self.app(self.scope, self.asgi_receive, self.asgi_send)  # type: ignore[func-returns-value]
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\uvicorn\middleware\proxy_headers.py", line 60, in __call__
+    return await self.app(scope, receive, send)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\fastapi\applications.py", line 1160, in __call__
+    await super().__call__(scope, receive, send)
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\starlette\applications.py", line 107, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\starlette\middleware\errors.py", line 151, in __call__
+    await self.app(scope, receive, send)
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\starlette\middleware\exceptions.py", line 63, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\fastapi\middleware\asyncexitstack.py", line 18, in __call__
+    await self.app(scope, receive, send)
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\starlette\routing.py", line 716, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\starlette\routing.py", line 736, in app
+    await route.handle(scope, receive, send)
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\starlette\routing.py", line 364, in handle
+    await self.app(scope, receive, send)
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\fastapi\routing.py", line 156, in app
+    await wrap_app_handling_exceptions(app, session)(scope, receive, send)
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\fastapi\routing.py", line 153, in app
+    await func(session)
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\fastapi\routing.py", line 760, in app
+    await dependant.call(**solved_result.values)
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\app\routes\auth.py", line 646, in run_python_ws
+    await websocket.close()
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\starlette\websockets.py", line 181, in close
+    await self.send({"type": "websocket.close", "code": code, "reason": reason or ""})
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\starlette\websockets.py", line 86, in send
+    await self._send(message)
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\starlette\_exception_handler.py", line 39, in sender
+    await send(message)
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\uvicorn\protocols\websockets\websockets_impl.py", line 357, in asgi_send
+    raise RuntimeError(msg % message_type)
+RuntimeError: Unexpected ASGI message 'websocket.close', after sending 'websocket.close' or response already completed.
+INFO:     127.0.0.1:56486 - "WebSocket /ws/chat?project_id=69afdb064b82e4a68e4b84d9" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:49702 - "WebSocket /ws/developer/69b0481138701a1e85804aab" [accepted]
+INFO:     connection open
+INFO:     connection closed
+INFO:     connection closed
+INFO:     127.0.0.1:53530 - "WebSocket /ws/chat?project_id=69afdb064b82e4a68e4b84d9" [accepted]
+INFO:     connection open
+INFO:     connection closed
+INFO:     127.0.0.1:56203 - "WebSocket /ws/chat?project_id=69afedfce69f02ce714397d4" [accepted]
+INFO:     connection open
+INFO:     connection closed
+INFO:     127.0.0.1:58112 - "WebSocket /ws/chat?project_id=69afdb064b82e4a68e4b84d9" [accepted]
+INFO:     connection open
+INFO:     connection closed
+INFO:     127.0.0.1:56900 - "WebSocket /ws/chat?project_id=69afdb064b82e4a68e4b84d9" [accepted]
+INFO:     connection open
+INFO:     connection closed
+INFO:     127.0.0.1:56963 - "WebSocket /ws/chat?project_id=69afdb064b82e4a68e4b84d9" [accepted]
+INFO:     connection open
+INFO:     connection closed
+INFO:     127.0.0.1:54890 - "WebSocket /ws/chat?project_id=69afdb064b82e4a68e4b84d9" [accepted]
+INFO:     connection open
+INFO:     connection closed
+ERROR:    Exception in ASGI application
+Traceback (most recent call last):
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\uvicorn\protocols\http\h11_impl.py", line 410, in run_asgi
+    result = await app(  # type: ignore[func-returns-value]
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        self.scope, self.receive, self.send
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\uvicorn\middleware\proxy_headers.py", line 60, in __call__
+    return await self.app(scope, receive, send)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\fastapi\applications.py", line 1160, in __call__
+    await super().__call__(scope, receive, send)
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\starlette\applications.py", line 107, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\starlette\middleware\errors.py", line 186, in __call__
+    raise exc
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\starlette\middleware\errors.py", line 164, in __call__
+    await self.app(scope, receive, _send)
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\starlette\middleware\exceptions.py", line 63, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\fastapi\middleware\asyncexitstack.py", line 18, in __call__
+    await self.app(scope, receive, send)
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\starlette\routing.py", line 716, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\starlette\routing.py", line 736, in app
+    await route.handle(scope, receive, send)
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\starlette\routing.py", line 290, in handle
+    await self.app(scope, receive, send)
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\fastapi\routing.py", line 130, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\fastapi\routing.py", line 116, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\fastapi\routing.py", line 670, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<3 lines>...
+    )
+    ^
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\fastapi\routing.py", line 324, in run_endpoint_function
+    return await dependant.call(**values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\app\main.py", line 98, in dashboard
+            "github_repo": github_repo,
+    ...<2 lines>...
+    )
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\starlette\templating.py", line 210, in TemplateResponse
+    return _TemplateResponse(
+        template,
+    ...<4 lines>...
+        background=background,
+    )
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\starlette\templating.py", line 41, in __init__
+    content = template.render(context)
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\jinja2\environment.py", line 1295, in render
+    self.environment.handle_exception()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\jinja2\environment.py", line 942, in handle_exception
+    raise rewrite_traceback_stack(source=source)
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\app\templates\developer_dashboard.html", line 54, in top-level template code
+    <p class="profile-popover-label">{{ (user_profile.role or 'member')|replace('_', ' ')|title }}</p>
+    
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\jinja2\environment.py", line 490, in getattr
+    return getattr(obj, attribute)
+jinja2.exceptions.UndefinedError: 'user_profile' is undefined
+ERROR:    Exception in ASGI application
+Traceback (most recent call last):
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\uvicorn\protocols\http\h11_impl.py", line 410, in run_asgi
+    result = await app(  # type: ignore[func-returns-value]
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        self.scope, self.receive, self.send
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\uvicorn\middleware\proxy_headers.py", line 60, in __call__
+    return await self.app(scope, receive, send)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\fastapi\applications.py", line 1160, in __call__
+    await super().__call__(scope, receive, send)
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\starlette\applications.py", line 107, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\starlette\middleware\errors.py", line 186, in __call__
+    raise exc
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\starlette\middleware\errors.py", line 164, in __call__
+    await self.app(scope, receive, _send)
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\starlette\middleware\exceptions.py", line 63, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\fastapi\middleware\asyncexitstack.py", line 18, in __call__
+    await self.app(scope, receive, send)
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\starlette\routing.py", line 716, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\starlette\routing.py", line 736, in app
+    await route.handle(scope, receive, send)
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\starlette\routing.py", line 290, in handle
+    await self.app(scope, receive, send)
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\fastapi\routing.py", line 130, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\fastapi\routing.py", line 116, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\fastapi\routing.py", line 670, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<3 lines>...
+    )
+    ^
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\fastapi\routing.py", line 324, in run_endpoint_function
+    return await dependant.call(**values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\app\main.py", line 98, in dashboard
+            "github_repo": github_repo,
+    ...<2 lines>...
+    )
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\starlette\templating.py", line 210, in TemplateResponse
+    return _TemplateResponse(
+        template,
+    ...<4 lines>...
+        background=background,
+    )
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\starlette\templating.py", line 41, in __init__
+    content = template.render(context)
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\jinja2\environment.py", line 1295, in render
+    self.environment.handle_exception()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\jinja2\environment.py", line 942, in handle_exception
+    raise rewrite_traceback_stack(source=source)
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\app\templates\developer_dashboard.html", line 54, in top-level template code
+    <p class="profile-popover-label">{{ (user_profile.role or 'member')|replace('_', ' ')|title }}</p>
+    
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\jinja2\environment.py", line 490, in getattr
+    return getattr(obj, attribute)
+jinja2.exceptions.UndefinedError: 'user_profile' is undefined
+ERROR:    Exception in ASGI application
+Traceback (most recent call last):
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\uvicorn\protocols\http\h11_impl.py", line 410, in run_asgi
+    result = await app(  # type: ignore[func-returns-value]
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        self.scope, self.receive, self.send
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\uvicorn\middleware\proxy_headers.py", line 60, in __call__
+    return await self.app(scope, receive, send)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\fastapi\applications.py", line 1160, in __call__
+    await super().__call__(scope, receive, send)
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\starlette\applications.py", line 107, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\starlette\middleware\errors.py", line 186, in __call__
+    raise exc
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\starlette\middleware\errors.py", line 164, in __call__
+    await self.app(scope, receive, _send)
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\starlette\middleware\exceptions.py", line 63, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\fastapi\middleware\asyncexitstack.py", line 18, in __call__
+    await self.app(scope, receive, send)
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\starlette\routing.py", line 716, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\starlette\routing.py", line 736, in app
+    await route.handle(scope, receive, send)
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\starlette\routing.py", line 290, in handle
+    await self.app(scope, receive, send)
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\fastapi\routing.py", line 130, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\fastapi\routing.py", line 116, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\fastapi\routing.py", line 670, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<3 lines>...
+    )
+    ^
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\fastapi\routing.py", line 324, in run_endpoint_function
+    return await dependant.call(**values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\app\main.py", line 98, in dashboard
+            "github_repo": github_repo,
+    ...<2 lines>...
+    )
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\starlette\templating.py", line 210, in TemplateResponse
+    return _TemplateResponse(
+        template,
+    ...<4 lines>...
+        background=background,
+    )
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\starlette\templating.py", line 41, in __init__
+    content = template.render(context)
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\jinja2\environment.py", line 1295, in render
+    self.environment.handle_exception()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\jinja2\environment.py", line 942, in handle_exception
+    raise rewrite_traceback_stack(source=source)
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\app\templates\developer_dashboard.html", line 54, in top-level template code
+    <p class="profile-popover-label">{{ (user_profile.role or 'member')|replace('_', ' ')|title }}</p>
+    
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\jinja2\environment.py", line 490, in getattr
+    return getattr(obj, attribute)
+jinja2.exceptions.UndefinedError: 'user_profile' is undefined
+ERROR:    Exception in ASGI application
+Traceback (most recent call last):
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\uvicorn\protocols\http\h11_impl.py", line 410, in run_asgi
+    result = await app(  # type: ignore[func-returns-value]
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        self.scope, self.receive, self.send
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\uvicorn\middleware\proxy_headers.py", line 60, in __call__
+    return await self.app(scope, receive, send)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\fastapi\applications.py", line 1160, in __call__
+    await super().__call__(scope, receive, send)
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\starlette\applications.py", line 107, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\starlette\middleware\errors.py", line 186, in __call__
+    raise exc
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\starlette\middleware\errors.py", line 164, in __call__
+    await self.app(scope, receive, _send)
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\starlette\middleware\exceptions.py", line 63, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\fastapi\middleware\asyncexitstack.py", line 18, in __call__
+    await self.app(scope, receive, send)
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\starlette\routing.py", line 716, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\starlette\routing.py", line 736, in app
+    await route.handle(scope, receive, send)
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\starlette\routing.py", line 290, in handle
+    await self.app(scope, receive, send)
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\fastapi\routing.py", line 130, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\fastapi\routing.py", line 116, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\fastapi\routing.py", line 670, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<3 lines>...
+    )
+    ^
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\fastapi\routing.py", line 324, in run_endpoint_function
+    return await dependant.call(**values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\app\main.py", line 98, in dashboard
+            "github_repo": github_repo,
+    ...<2 lines>...
+    )
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\starlette\templating.py", line 210, in TemplateResponse
+    return _TemplateResponse(
+        template,
+    ...<4 lines>...
+        background=background,
+    )
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\starlette\templating.py", line 41, in __init__
+    content = template.render(context)
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\jinja2\environment.py", line 1295, in render
+    self.environment.handle_exception()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\jinja2\environment.py", line 942, in handle_exception
+    raise rewrite_traceback_stack(source=source)
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\app\templates\developer_dashboard.html", line 54, in top-level template code
+    <p class="profile-popover-label">{{ (user_profile.role or 'member')|replace('_', ' ')|title }}</p>
+    
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\jinja2\environment.py", line 490, in getattr
+    return getattr(obj, attribute)
+jinja2.exceptions.UndefinedError: 'user_profile' is undefined
+ERROR:    Exception in ASGI application
+Traceback (most recent call last):
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\uvicorn\protocols\http\h11_impl.py", line 410, in run_asgi
+    result = await app(  # type: ignore[func-returns-value]
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        self.scope, self.receive, self.send
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\uvicorn\middleware\proxy_headers.py", line 60, in __call__
+    return await self.app(scope, receive, send)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\fastapi\applications.py", line 1160, in __call__
+    await super().__call__(scope, receive, send)
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\starlette\applications.py", line 107, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\starlette\middleware\errors.py", line 186, in __call__
+    raise exc
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\starlette\middleware\errors.py", line 164, in __call__
+    await self.app(scope, receive, _send)
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\starlette\middleware\exceptions.py", line 63, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\fastapi\middleware\asyncexitstack.py", line 18, in __call__
+    await self.app(scope, receive, send)
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\starlette\routing.py", line 716, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\starlette\routing.py", line 736, in app
+    await route.handle(scope, receive, send)
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\starlette\routing.py", line 290, in handle
+    await self.app(scope, receive, send)
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\fastapi\routing.py", line 130, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\fastapi\routing.py", line 116, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\fastapi\routing.py", line 670, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<3 lines>...
+    )
+    ^
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\fastapi\routing.py", line 324, in run_endpoint_function
+    return await dependant.call(**values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\app\main.py", line 98, in dashboard
+            "github_repo": github_repo,
+    ...<2 lines>...
+    )
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\starlette\templating.py", line 210, in TemplateResponse
+    return _TemplateResponse(
+        template,
+    ...<4 lines>...
+        background=background,
+    )
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\starlette\templating.py", line 41, in __init__
+    content = template.render(context)
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\jinja2\environment.py", line 1295, in render
+    self.environment.handle_exception()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\jinja2\environment.py", line 942, in handle_exception
+    raise rewrite_traceback_stack(source=source)
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\app\templates\developer_dashboard.html", line 54, in top-level template code
+    <p class="profile-popover-label">{{ (user_profile.role or 'member')|replace('_', ' ')|title }}</p>
+    
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\jinja2\environment.py", line 490, in getattr
+    return getattr(obj, attribute)
+jinja2.exceptions.UndefinedError: 'user_profile' is undefined
+ERROR:    Exception in ASGI application
+Traceback (most recent call last):
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\uvicorn\protocols\http\h11_impl.py", line 410, in run_asgi
+    result = await app(  # type: ignore[func-returns-value]
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        self.scope, self.receive, self.send
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\uvicorn\middleware\proxy_headers.py", line 60, in __call__
+    return await self.app(scope, receive, send)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\fastapi\applications.py", line 1160, in __call__
+    await super().__call__(scope, receive, send)
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\starlette\applications.py", line 107, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\starlette\middleware\errors.py", line 186, in __call__
+    raise exc
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\starlette\middleware\errors.py", line 164, in __call__
+    await self.app(scope, receive, _send)
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\starlette\middleware\exceptions.py", line 63, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\fastapi\middleware\asyncexitstack.py", line 18, in __call__
+    await self.app(scope, receive, send)
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\starlette\routing.py", line 716, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\starlette\routing.py", line 736, in app
+    await route.handle(scope, receive, send)
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\starlette\routing.py", line 290, in handle
+    await self.app(scope, receive, send)
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\fastapi\routing.py", line 130, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\fastapi\routing.py", line 116, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\fastapi\routing.py", line 670, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<3 lines>...
+    )
+    ^
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\fastapi\routing.py", line 324, in run_endpoint_function
+    return await dependant.call(**values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\app\main.py", line 98, in dashboard
+            "github_repo": github_repo,
+    ...<2 lines>...
+    )
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\starlette\templating.py", line 210, in TemplateResponse
+    return _TemplateResponse(
+        template,
+    ...<4 lines>...
+        background=background,
+    )
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\starlette\templating.py", line 41, in __init__
+    content = template.render(context)
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\jinja2\environment.py", line 1295, in render
+    self.environment.handle_exception()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\jinja2\environment.py", line 942, in handle_exception
+    raise rewrite_traceback_stack(source=source)
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\app\templates\developer_dashboard.html", line 54, in top-level template code
+    <p class="profile-popover-label">{{ (user_profile.role or 'member')|replace('_', ' ')|title }}</p>
+    
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\jinja2\environment.py", line 490, in getattr
+    return getattr(obj, attribute)
+jinja2.exceptions.UndefinedError: 'user_profile' is undefined
+ERROR:    Exception in ASGI application
+Traceback (most recent call last):
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\uvicorn\protocols\http\h11_impl.py", line 410, in run_asgi
+    result = await app(  # type: ignore[func-returns-value]
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        self.scope, self.receive, self.send
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\uvicorn\middleware\proxy_headers.py", line 60, in __call__
+    return await self.app(scope, receive, send)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\fastapi\applications.py", line 1160, in __call__
+    await super().__call__(scope, receive, send)
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\starlette\applications.py", line 107, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\starlette\middleware\errors.py", line 186, in __call__
+    raise exc
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\starlette\middleware\errors.py", line 164, in __call__
+    await self.app(scope, receive, _send)
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\starlette\middleware\exceptions.py", line 63, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\fastapi\middleware\asyncexitstack.py", line 18, in __call__
+    await self.app(scope, receive, send)
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\starlette\routing.py", line 716, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\starlette\routing.py", line 736, in app
+    await route.handle(scope, receive, send)
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\starlette\routing.py", line 290, in handle
+    await self.app(scope, receive, send)
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\fastapi\routing.py", line 130, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\fastapi\routing.py", line 116, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\fastapi\routing.py", line 670, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<3 lines>...
+    )
+    ^
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\fastapi\routing.py", line 324, in run_endpoint_function
+    return await dependant.call(**values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\app\main.py", line 98, in dashboard
+            "github_repo": github_repo,
+    ...<2 lines>...
+    )
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\starlette\templating.py", line 210, in TemplateResponse
+    return _TemplateResponse(
+        template,
+    ...<4 lines>...
+        background=background,
+    )
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\starlette\templating.py", line 41, in __init__
+    content = template.render(context)
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\jinja2\environment.py", line 1295, in render
+    self.environment.handle_exception()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\jinja2\environment.py", line 942, in handle_exception
+    raise rewrite_traceback_stack(source=source)
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\app\templates\developer_dashboard.html", line 54, in top-level template code
+    <p class="profile-popover-label">{{ (user_profile.role or 'member')|replace('_', ' ')|title }}</p>
+    
+  File "C:\Users\user\Videos\Main_pro\CodePad\CodePad\project\.venv\Lib\site-packages\jinja2\environment.py", line 490, in getattr
+    return getattr(obj, attribute)
+jinja2.exceptions.UndefinedError: 'user_profile' is undefined

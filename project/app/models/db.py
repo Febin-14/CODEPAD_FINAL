@@ -1,7 +1,9 @@
 from motor.motor_asyncio import AsyncIOMotorClient
 from fastapi import Request
 
-MONGO_DETAILS = "mongodb://localhost:27017"
+import os
+
+MONGO_DETAILS = os.getenv("MONGO_URI", "mongodb+srv://Febin_User:Panickan%407019@codepad.lvufrmj.mongodb.net/?appName=CodePad")
 
 class MongoDB:
     client: AsyncIOMotorClient = None

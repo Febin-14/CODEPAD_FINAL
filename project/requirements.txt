@@ -10,3 +10,4 @@ python-dotenv
 websockets
 python-multipart
 jinja2
+groq

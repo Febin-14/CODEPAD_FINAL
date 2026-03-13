@@ -17,12 +17,17 @@ class User(BaseModel):
     password: str
     role: str
     description: str
+    photo_url: Optional[str] = None
+    approval_status: Optional[str] = "approved"
 
 class Project(BaseModel):
     title: str
     description: Optional[str] = None
     assigned_developers: list[str] = []  # list of usernames
     status: Optional[str] = "active"  # 'active' or 'completed'
+    github_path: Optional[str] = None
+    github_branch: Optional[str] = None
+    github_repo: Optional[str] = None
 
 class Task(BaseModel):
     title: str
@@ -32,6 +37,7 @@ class Task(BaseModel):
     description: Optional[str] = None
     status: Optional[str] = "new"
     priority: Optional[str] = "medium"  # 'low', 'medium', or 'high'
+    framework: Optional[str] = None # 'React', 'Vue', 'FastAPI', 'Django', etc
     code: Optional[str] = None  # Store submitted code
     comments: Optional[str] = None  # Manager's review comments
 
@@ -46,6 +52,10 @@ class RunPythonRequest(BaseModel):
 class TaskReview(BaseModel):
     task_id: str
     comments: Optional[str] = None  # Required if rejecting
+
+class GitHubConfigUpdate(BaseModel):
+    repo: str
+    token: Optional[str] = None
 
 class ChatMessage(BaseModel):
     sender_username: str

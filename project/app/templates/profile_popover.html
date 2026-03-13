@@ -1,0 +1,46 @@
+<div class="profile-popover" data-profile-popover data-upload-url="/api/profile/photo">
+    <button type="button" class="avatar-circle profile-popover-trigger" data-profile-trigger
+        aria-expanded="false" aria-label="View profile summary">
+        <img src="{{ user_profile.photo_url or '' }}" alt="{{ username }} profile photo"
+            class="profile-avatar-image profile-avatar-image-trigger{% if not user_profile.photo_url %} is-hidden{% endif %}"
+            data-profile-photo-image>
+        <span class="profile-avatar-fallback{% if user_profile.photo_url %} is-hidden{% endif %}"
+            data-profile-photo-fallback>{{ username[0].upper() }}</span>
+    </button>
+    <div class="profile-popover-card" data-profile-card hidden>
+        <div class="profile-popover-top">
+            <div class="profile-avatar-shell profile-avatar-shell-card">
+                <img src="{{ user_profile.photo_url or '' }}" alt="{{ username }} profile photo"
+                    class="profile-avatar-image{% if not user_profile.photo_url %} is-hidden{% endif %}"
+                    data-profile-photo-image>
+                <span class="profile-avatar-fallback profile-avatar-fallback-card{% if user_profile.photo_url %} is-hidden{% endif %}"
+                    data-profile-photo-fallback>{{ username[0].upper() }}</span>
+            </div>
+            <div class="profile-popover-heading">
+                <p class="profile-popover-label">{{ (user_profile.role or 'member')|replace('_', ' ')|title }}</p>
+                <h3 class="profile-popover-name">{{ username }}</h3>
+            </div>
+        </div>
+        <div class="profile-popover-stats">
+            <article class="profile-stat-card">
+                <strong class="profile-stat-value">{{ user_profile.projects_completed }}</strong>
+                <span class="profile-stat-label">Projects Completed</span>
+            </article>
+            <article class="profile-stat-card">
+                <strong class="profile-stat-value">{{ user_profile.projects_active }}</strong>
+                <span class="profile-stat-label">Active Projects</span>
+            </article>
+            <article class="profile-stat-card">
+                <strong class="profile-stat-value">{{ user_profile.tasks_done }}</strong>
+                <span class="profile-stat-label">Tasks Done</span>
+            </article>
+        </div>
+        <p class="profile-popover-description">{{ user_profile.description }}</p>
+        <div class="profile-popover-actions">
+            <input type="file" accept="image/*" class="profile-photo-input" data-profile-photo-input hidden>
+            <button type="button" class="secondary-button profile-photo-button" data-profile-photo-button>
+                Upload Photo
+            </button>
+        </div>
+    </div>
+</div>

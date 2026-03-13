@@ -221,18 +221,16 @@ async def chat_ai(request: Request):
     if not text:
         raise HTTPException(status_code=400, detail="Message cannot be empty")
 
-    load_dotenv()
-    api_key = os.environ.get("OPENAI_API_KEY")
-    if not api_key:
-        return {"reply": "AI chat is not configured. Please set OPENAI_API_KEY."}
+    # Use Groq API Key
+    api_key = os.getenv("GROQ_API_KEY")
 
     try:
-        from openai import OpenAI
-        client = OpenAI(api_key=api_key)
+        from openai import AsyncOpenAI
+        client = AsyncOpenAI(api_key=api_key, base_url="https://api.groq.com/openai/v1")
 
-        messages = []
         # If code context is provided (from in-editor AI assistant), add system prompt
         context = body.get("context")
+        messages = []
         if context and isinstance(context, dict):
             code = context.get("code", "")
             language = context.get("language", "")
@@ -253,10 +251,11 @@ async def chat_ai(request: Request):
 
         messages.append({"role": "user", "content": text})
 
-        response = client.chat.completions.create(
-            model="gpt-4o",
+        response = await client.chat.completions.create(
+            model="llama-3.3-70b-versatile",
             messages=messages,
-            max_tokens=1024,
+            temperature=0.7,
+            max_tokens=1024
         )
         reply = (response.choices[0].message.content or "").strip()
         return {"reply": reply or "No response from AI."}
@@ -272,45 +271,55 @@ async def chat_ai_voice(request: Request, audio: UploadFile = File(...)):
         raise HTTPException(status_code=401, detail="Not authenticated")
     # Accept any upload; Whisper handles format detection. Reject only if missing.
 
-    api_key = os.environ.get("OPENAI_API_KEY")
-    if not api_key:
-        return {"transcript": "", "reply": "AI voice chat is not configured. Please set OPENAI_API_KEY."}
+    api_key = os.getenv("GROQ_API_KEY")
 
     try:
-        from openai import OpenAI
-        client = OpenAI(api_key=api_key)
-        # Read uploaded file into bytes (Whisper accepts file-like or bytes)
+        from openai import AsyncOpenAI
+        client = AsyncOpenAI(api_key=api_key, base_url="https://api.groq.com/openai/v1")
+        
+        # Read uploaded file into bytes 
         body = await audio.read()
         if len(body) < 100:
             return {"transcript": "", "reply": "Audio too short or empty. Please record again."}
-        # Whisper expects a file with a known extension; pass as bytes with filename hint
+            
         ext = "webm"  # browser MediaRecorder usually gives webm
         if audio.filename and "." in audio.filename:
             ext = audio.filename.rsplit(".", 1)[-1].lower()
-        # openai SDK accepts a tuple (filename, file_content, content_type) for in-memory files
+            
         import tempfile
+        import os
         with tempfile.NamedTemporaryFile(suffix="." + ext, delete=False) as tmp:
             tmp.write(body)
             tmp.flush()
             tmp_path = tmp.name
+        
         try:
-            with open(tmp_path, "rb") as f:
-                transcript_resp = client.audio.transcriptions.create(model="whisper-1", file=f)
-            transcript = (transcript_resp.text or "").strip()
+            # Step 1: Transcribe the audio
+            with open(tmp_path, "rb") as audio_file:
+                transcript_response = await client.audio.transcriptions.create(
+                    model="whisper-large-v3",
+                    file=audio_file,
+                )
+            transcript = (transcript_response.text or "").strip()
+            
+            if not transcript:
+                return {"transcript": "", "reply": "Could not understand the audio. Please try again or type your message."}
+                
+            # Step 2: Formulate reply based on transcript
+            reply_response = await client.chat.completions.create(
+                model="llama-3.3-70b-versatile",
+                messages=[{"role": "user", "content": transcript}],
+                temperature=0.7,
+                max_tokens=1024
+            )
+            reply = (reply_response.choices[0].message.content or "").strip()
+                
+            return {"transcript": transcript, "reply": reply or "No response from AI."}
         finally:
             try:
                 os.unlink(tmp_path)
             except Exception:
                 pass
-        if not transcript:
-            return {"transcript": "", "reply": "Could not understand the audio. Please try again or type your message."}
-        # Get GPT-4o reply from transcript
-        response = client.chat.completions.create(
-            model="gpt-4o",
-            messages=[{"role": "user", "content": transcript}],
-            max_tokens=1024,
-        )
-        reply = (response.choices[0].message.content or "").strip()
-        return {"transcript": transcript, "reply": reply or "No response from AI."}
+
     except Exception as e:
         return {"transcript": "", "reply": "Sorry, voice input failed. " + str(e)[:150]}

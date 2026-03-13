@@ -53,6 +53,22 @@
         if (el) el.textContent = text;
     }
 
+    function isChatOpen() {
+        var wrap = document.getElementById('chatWidgetWrap');
+        return !!(wrap && wrap.classList.contains('chat-open'));
+    }
+
+    function hasActiveProject() {
+        return !!window.currentProjectId;
+    }
+
+    function teamChatStatus() {
+        if (!hasActiveProject()) return 'Select a project to use team chat';
+        if (teamWs && teamWs.readyState === WebSocket.OPEN) return 'Connected · Team Chat';
+        if (teamWs && teamWs.readyState === WebSocket.CONNECTING) return 'Connecting...';
+        return 'Connecting...';
+    }
+
     function updateBadge() {
         var total = unreadTeam;
         var badge = document.getElementById('chatUnreadBadge');
@@ -107,22 +123,34 @@
     }
 
     function connectTeam(projectId) {
-        if (!projectId) return;
+        if (!projectId) {
+            setStatus('Select a project to use team chat');
+            return;
+        }
         if (teamWs && (teamWs.readyState === WebSocket.OPEN || teamWs.readyState === WebSocket.CONNECTING)) return;
         teamWs = new WebSocket(wsUrl(projectId));
         teamWs.onopen = function () {
             loadHistory('team', projectId);
-            if (activeChannel === 'team' && currentMode === 'chat') setStatus('Connected · Team Chat');
+            if (activeChannel === 'team' && currentMode === 'chat') setStatus(teamChatStatus());
         };
         teamWs.onmessage = function (ev) { handleIncoming(ev, 'team'); };
         teamWs.onclose = function (ev) {
-            // code 4003 = not a project member (server rejected)
-            if (ev.code === 4003) {
+            var closedProjectId = projectId;
+            teamWs = null;
+            if (ev.code === 4003 || ev.code === 4004) {
                 if (activeChannel === 'team' && currentMode === 'chat')
-                    setStatus('⚠️ Not a member of this project\'s team chat');
-                return; // do not retry
+                    setStatus(ev.code === 4004 ? 'Project chat unavailable' : 'Team chat unavailable for this project');
+                return;
             }
-            setTimeout(function () { connectTeam(window.currentProjectId); }, 3000);
+            if (!window.currentProjectId) {
+                setStatus('Select a project to use team chat');
+                return;
+            }
+            if (window.currentProjectId !== closedProjectId) return;
+            if (activeChannel === 'team' && currentMode === 'chat') setStatus('Reconnecting...');
+            setTimeout(function () {
+                if (window.currentProjectId === closedProjectId) connectTeam(window.currentProjectId);
+            }, 3000);
         };
         teamWs.onerror = function () { /* handled by onclose */ };
     }
@@ -133,7 +161,7 @@
         if (data.type !== 'message') return;
         messageStore[channel].push(data);
 
-        if (currentMode === 'chat' && isOpen) {
+        if (currentMode === 'chat' && isChatOpen()) {
             var container = document.getElementById('chatMessages');
             if (container) {
                 var isSelf = data.sender_username === currentUsername;
@@ -149,6 +177,11 @@
     // ─── History loading ──────────────────────────────────────────────────────
     function loadHistory(channel, projectId) {
         var pid = projectId || window.currentProjectId;
+        if (!pid) {
+            messageStore[channel] = [];
+            if (currentMode === 'chat' && activeChannel === channel) renderMessages();
+            return;
+        }
         fetch('/api/chat/messages?limit=80&project_id=' + pid)
             .then(function (r) { return r.ok ? r.json() : Promise.reject(); })
             .then(function (d) {
@@ -157,6 +190,7 @@
             })
             .catch(function () {
                 messageStore[channel] = [];
+                if (currentMode === 'chat' && activeChannel === channel) renderMessages();
             });
     }
 
@@ -169,10 +203,12 @@
         var title = document.getElementById('chatPanelTitle');
         if (title) title.textContent = 'Team Chat';
 
-        var label = 'Team Chat';
-        if (teamWs && teamWs.readyState === WebSocket.OPEN) setStatus('Connected · ' + label);
-        else if (teamWs && teamWs.readyState === WebSocket.CONNECTING) setStatus('Connecting…');
-        else setStatus('Not a member of this project\'s team chat');
+        if (!hasActiveProject()) {
+            setStatus('Select a project to use team chat');
+        } else {
+            if (!teamWs || teamWs.readyState > WebSocket.OPEN) connectTeam(window.currentProjectId);
+            setStatus(teamChatStatus());
+        }
 
         renderMessages();
     }
@@ -204,8 +240,12 @@
         if (mode === 'ai') {
             setStatus('AI Assistant · GPT-4o');
         } else {
-            var label = 'Team Chat';
-            setStatus(teamWs && teamWs.readyState === WebSocket.OPEN ? 'Connected · ' + label : 'Connecting…');
+            if (!hasActiveProject()) {
+                setStatus('Select a project to use team chat');
+            } else {
+                if (!teamWs || teamWs.readyState > WebSocket.OPEN) connectTeam(window.currentProjectId);
+                setStatus(teamChatStatus());
+            }
         }
         renderMessages();
     }
@@ -216,12 +256,17 @@
         if (wrap) wrap.classList.add('chat-open');
         unreadTeam = 0;
         updateBadge();
-        loadHistory(activeChannel);
-        var label = 'Team Chat';
-        if (currentMode === 'chat')
-            setStatus(teamWs && teamWs.readyState === WebSocket.OPEN ? 'Connected · ' + label : 'Connecting…');
-        else
+        if (currentMode === 'chat') {
+            if (hasActiveProject()) {
+                if (!teamWs || teamWs.readyState > WebSocket.OPEN) connectTeam(window.currentProjectId);
+                loadHistory(activeChannel);
+                setStatus(teamChatStatus());
+            } else {
+                setStatus('Select a project to use team chat');
+            }
+        } else {
             setStatus('AI Assistant · GPT-4o');
+        }
         renderMessages();
     }
 
@@ -238,8 +283,13 @@
         if (!text) return;
 
         if (currentMode === 'chat') {
+            if (!hasActiveProject()) {
+                setStatus('Select a project to use team chat');
+                return;
+            }
             if (!teamWs || teamWs.readyState !== WebSocket.OPEN) {
-                setStatus('⚠️ Not connected – cannot send');
+                setStatus('Not connected - cannot send');
+                connectTeam(window.currentProjectId);
                 return;
             }
             teamWs.send(JSON.stringify({ type: 'message', text: text }));
@@ -294,13 +344,13 @@
     }
 
     function startRecording() {
-        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { alert('Microphone not supported in this browser.'); return; }
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { window.appNotice('Microphone not supported in this browser.', { type: 'error' }); return; }
         recordingChunks = [];
         navigator.mediaDevices.getUserMedia({ audio: true })
             .then(function (stream) {
                 recordingStream = stream;
                 var mime = MediaRecorder.isTypeSupported('audio/webm;codecs=opus') ? 'audio/webm;codecs=opus' : 'audio/webm';
-                try { mediaRecorder = new MediaRecorder(stream); } catch (e) { stream.getTracks().forEach(function (t) { t.stop(); }); alert('Recording not supported: ' + e.message); return; }
+                try { mediaRecorder = new MediaRecorder(stream); } catch (e) { stream.getTracks().forEach(function (t) { t.stop(); }); window.appNotice('Recording not supported: ' + e.message, { type: 'error' }); return; }
                 mediaRecorder.ondataavailable = function (e) { if (e.data.size) recordingChunks.push(e.data); };
                 mediaRecorder.onstop = function () {
                     stream.getTracks().forEach(function (t) { t.stop(); }); recordingStream = null;
@@ -313,7 +363,7 @@
                 var btn = document.getElementById('chatVoiceBtn');
                 if (btn) { btn.classList.add('chat-voice-recording'); btn.title = 'Stop recording'; }
             })
-            .catch(function (err) { alert('Microphone access denied: ' + (err.message || 'Unknown error')); });
+            .catch(function (err) { window.appNotice('Microphone access denied: ' + (err.message || 'Unknown error'), { type: 'error' }); });
     }
 
     function toggleVoiceRecording() {
@@ -386,6 +436,7 @@
 
         // Connect team channel (if project is active)
         if (window.currentProjectId) connectTeam(window.currentProjectId);
+        else setStatus('Select a project to use team chat');
 
         setMode('chat');
         var voiceWrap = document.getElementById('chatVoiceWrap');
@@ -413,7 +464,7 @@
         // If team channel is active, reload history + show
         if (activeChannel === 'team') {
             renderMessages();
-            setStatus('Connecting to Team Chat…');
+            setStatus('Connecting...');
         }
     };
 
