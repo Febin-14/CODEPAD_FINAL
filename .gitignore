@@ -17,3 +17,14 @@ __pycache__/
 .vscode/
 .idea/
 .DS_Store
+
+# Logs
+*.log
+
+# Temporary / test scripts
+tmp_*.py
+tmp_*.json
+test_*.py
+model_list_out.txt
+check_dashboard.py
+fix_unassigned.py

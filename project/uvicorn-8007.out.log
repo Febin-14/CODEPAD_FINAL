@@ -1,2 +1,0 @@
-INFO:     127.0.0.1:49806 - "GET / HTTP/1.1" 200 OK
-INFO:     127.0.0.1:49810 - "GET /openapi.json HTTP/1.1" 200 OK
