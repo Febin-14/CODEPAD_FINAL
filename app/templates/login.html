@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CodePad - Login</title>
+    <link rel="stylesheet" href="{{ url_for('static', path='style.css') }}?v=11">
+    <script src="{{ url_for('static', path='ui_feedback.js') }}"></script>
+    <script src="{{ url_for('static', path='theme.js') }}"></script>
+</head>
+
+<body class="login-body auth-page">
+    
+    <div class="login-wrapper auth-shell">
+        <div class="login-container auth-card">
+            <button id="theme-toggle" class="theme-toggle auth-theme-toggle" aria-label="Toggle Theme" title="Toggle Theme">
+                <img src="/static/moon.png" id="theme-icon" class="theme-icon" alt="Theme Toggle">
+            </button>
+            
+            
+            <div class="login-header">
+                <h1 class="login-brand">CodePad</h1>
+                <p class="login-subtitle">Sign in to manage projects, tasks, and reviews.</p>
+            </div>
+
+            <form action="/login" method="post" class="login-form">
+                <div class="input-group">
+                    <label for="username" class="input-label">Username</label>
+                    <input type="text" id="username" name="username" class="text-input"
+                        placeholder="Enter your username" required>
+                </div>
+
+                <div class="input-group">
+                    <label for="password" class="input-label">Password</label>
+                    <input type="password" id="password" name="password" class="text-input"
+                        placeholder="Enter your password" required>
+                </div>
+
+                <div class="input-group">
+                    <label for="role" class="input-label">Role</label>
+                    <select id="role" name="role" class="select-input" required>
+                        <option value="manager">Project Manager</option>
+                        <option value="frontend developer">Frontend Developer</option>
+                        <option value="backend developer">Backend Developer</option>
+                    </select>
+                </div>
+
+                <button type="submit" class="login-button">
+                    Sign In
+                </button>
+            </form>
+
+            {% if request.query_params.get('error') == 'role_mismatch' %}
+            <div class="form-message error-message error">
+                <span class="error-text">Selected role is incorrect for this user.</span>
+            </div>
+            {% elif request.query_params.get('error') == 'pending_approval' %}
+            <div class="form-message error-message error">
+                <span class="error-text">Your developer account is waiting for manager approval.</span>
+            </div>
+            {% elif request.query_params.get('error') == 'invalid' %}
+            <div class="form-message error-message error">
+                <span class="error-text">Invalid username or password.</span>
+            </div>
+            {% elif request.query_params.get('success') == 'registered' %}
+            <div class="form-message error-message success">
+                <span class="error-text">Account created successfully. Please sign in.</span>
+            </div>
+            {% elif request.query_params.get('success') == 'pending_approval' %}
+            <div class="form-message error-message success">
+                <span class="error-text">Developer account created. A manager must approve it before sign in.</span>
+            </div>
+            {% endif %}
+
+            <div class="login-footer auth-footer">
+                <span>Don't have an account? </span>
+                <a href="/register" class="auth-link">Register</a>
+            </div>
+        </div>
+    </div>
+</body>
+
+</html>

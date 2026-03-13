@@ -1,0 +1,1241 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ project.title }} – Project</title>
+    <link rel="stylesheet" href="{{ url_for('static', path='style.css') }}?v=11">
+    <script src="{{ url_for('static', path='ui_feedback.js') }}"></script>
+    <script src="{{ url_for('static', path='theme.js') }}"></script>
+    <script src="{{ url_for('static', path='chat.js') }}?v=2"></script>
+    <script src="{{ url_for('static', path='profile_popover.js') }}?v=2" defer></script>
+    <script>
+        window.currentProjectId = "{{ project._id }}";
+    </script>
+</head>
+
+<body class="app-shell project-shell">
+    <div class="app-wrapper">
+
+        <header class="top-bar">
+            <div class="header-container">
+                <h1 class="brand-title">CodePad</h1>
+                <div class="profile-section">
+                    <a href="/dashboard" class="nav-link">Back to Dashboard</a>
+                    <span class="greeting">Hello, <strong>{{ username }}</strong></span>
+                    {% include 'profile_popover.html' %}
+
+                    <a href="/logout" class="logout-link">Logout</a>
+
+                    <button id="theme-toggle" class="theme-toggle" aria-label="Toggle Theme" title="Toggle Theme">
+                        <img src="/static/moon.png" id="theme-icon" class="theme-icon" alt="Theme Toggle">
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <main class="main-content">
+            <div class="layout-grid page-layout single-column-grid">
+                <section class="page-header page-header-split project-page-header">
+                    <div class="page-header-copy">
+                        <div class="page-title-row">
+                            <h2 class="page-title">{{ project.title }}</h2>
+                            <span class="status-indicator status-{{ project.status or 'active' }}">
+                                {{ (project.status or 'active')|capitalize }}
+                            </span>
+                        </div>
+                        <p class="page-description">{{ project.description or "No description provided." }}</p>
+                    </div>
+                    <div class="page-header-actions">
+                        <a href="/dashboard" class="secondary-button">Back to Dashboard</a>
+                        {% if project.status != 'completed' %}
+                        <button type="button" class="submit-button success-button"
+                            onclick="openCompleteProjectModal('{{ project._id }}', '{{ project.title|escape }}')">
+                            Mark Completed
+                        </button>
+                        <form id="complete-form-{{ project._id }}" action="/api/projects/{{ project._id }}/complete"
+                            method="post" style="display: none;"></form>
+                        {% else %}
+                        <button type="button" id="pushProjectGithubBtn" class="submit-button"
+                            onclick="pushCompletedProjectToGitHub()">
+                            Push to GitHub
+                        </button>
+                        <button type="button" class="secondary-button" onclick="openCompletedProjectGitHubUrl()">
+                            View on GitHub
+                        </button>
+                        <button type="button" class="secondary-button"
+                            onclick="window.location.href='/api/projects/{{ project._id }}/download'">
+                            Download Source
+                        </button>
+                        {% endif %}
+                    </div>
+                </section>
+
+                <section class="summary-strip project-summary">
+                    <article class="summary-item">
+                        <span class="summary-label">Tasks</span>
+                        <strong class="summary-value">{{ tasks|length }}</strong>
+                    </article>
+                    <article class="summary-item">
+                        <span class="summary-label">Active Build</span>
+                        <strong class="summary-value">{{ tasks|selectattr('status', 'equalto', 'in_progress')|list|length }}</strong>
+                    </article>
+                    <article class="summary-item">
+                        <span class="summary-label">Review Ready</span>
+                        <strong class="summary-value">{{ tasks|selectattr('status', 'equalto', 'submitted_for_review')|list|length }}</strong>
+                    </article>
+                    <article class="summary-item">
+                        <span class="summary-label">Assigned Devs</span>
+                        <strong class="summary-value">{{ project.assigned_developers|length }}</strong>
+                    </article>
+                    <article class="summary-item">
+                        <span class="summary-label">Completion</span>
+                        <strong class="summary-value">{{ project.completion_percent }}%</strong>
+                    </article>
+                </section>
+
+                <div class="creation-row project-workspace-row">
+
+                    <section class="panel creation-panel">
+                        <div class="panel-header">
+                            <h2 class="section-title">New Task for this Project</h2>
+                            <p class="section-description">Delegate work within "{{ project.title }}".</p>
+                        </div>
+                        <form action="/add_task" method="post" class="creation-form">
+                            <input type="hidden" name="project_id" value="{{ project._id }}">
+                            <div class="input-group">
+                                <label for="task-title" class="input-label">Task Title</label>
+                                <input type="text" id="task-title" name="title" class="text-input"
+                                    placeholder="What needs to be done?" required>
+                            </div>
+                            <div class="input-group">
+                                <label for="task-desc" class="input-label">Requirements</label>
+                                <textarea id="task-desc" name="description" class="textarea-input"
+                                    placeholder="Describe requirements. The task will be auto-assigned to the best-matching developer based on role fit and current workload."
+                                    rows="2"></textarea>
+                            </div>
+                            <div class="input-group">
+                                <label for="task-framework" class="input-label">Framework (Optional)</label>
+                                <select id="task-framework" name="framework" class="select-input">
+                                    <option value="" selected>None / Any</option>
+                                    <option value="React">React</option>
+                                    <option value="Vue">Vue</option>
+                                    <option value="Angular">Angular</option>
+                                    <option value="Next.js">Next.js</option>
+                                    <option value="Tailwind">Tailwind</option>
+                                    <option value="FastAPI">FastAPI</option>
+                                    <option value="Django">Django</option>
+                                    <option value="Flask">Flask</option>
+                                    <option value="Express">Express</option>
+                                </select>
+                            </div>
+                            <div class="input-group">
+                                <label for="task-priority" class="input-label">Priority</label>
+                                <select id="task-priority" name="priority" class="select-input">
+                                    <option value="low">Low</option>
+                                    <option value="medium" selected>Medium</option>
+                                    <option value="high">High</option>
+                                </select>
+                            </div>
+                            <button type="submit" class="submit-button">
+                                Create Task
+                            </button>
+                        </form>
+                    </section>
+
+                    <section class="panel overview-panel">
+                        <div class="panel-header">
+                            <div>
+                                <h2 class="section-title">Task Overview</h2>
+                                <p class="section-description">All tasks in "{{ project.title }}"</p>
+                            </div>
+                        </div>
+                        <div class="table-wrapper">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Task</th>
+                                        <th>Category</th>
+                                        <th>Framework</th>
+                                        <th>Assignee</th>
+                                        <th>Status</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for task in tasks %}
+                                    <tr>
+                                        <td class="task-title-cell">{{ task.title }}</td>
+                                        <td>
+                                            <span class="category-badge category-{{ task.type }}">
+                                                {{ task.type|capitalize }}
+                                            </span>
+                                        </td>
+                                        <td class="framework-cell">
+                                            {{ task.framework or "—" }}
+                                        </td>
+                                        <td class="assignee-cell">{{ task.assigned_to or "Unassigned" }}</td>
+                                        <td>
+                                            {% if task.status == "new" %}
+                                            <span class="status-indicator status-new">New</span>
+                                            {% elif task.status == "submitted_for_review" %}
+                                            <span class="status-indicator status-submitted">Submitted for Review</span>
+                                            {% elif task.status == "done" %}
+                                            <span class="status-indicator status-done">Done</span>
+                                            {% else %}
+                                            <span class="status-indicator status-{{ task.status }}">
+                                                {{ task.status|capitalize|replace("_", " ") }}
+                                            </span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <div class="action-cell-inner">
+                                                {% if task.status in ['submitted_for_review', 'done'] %}
+                                                <button type="button" class="view-code-btn"
+                                                    data-task-id="{{ task._id }}" data-task-title="{{ task.title }}"
+                                                    data-task-type="{{ task.type }}"
+                                                    data-task-status="{{ task.status }}"
+                                                    onclick="openSubmittedCodeModal(this.dataset.taskId, this.dataset.taskTitle, this.dataset.taskType, this.dataset.taskStatus)"
+                                                    title="View Submitted Code">
+                                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+                                                        stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                                        stroke-linejoin="round">
+                                                        <polyline points="16 18 22 12 16 6"></polyline>
+                                                        <polyline points="8 6 2 12 8 18"></polyline>
+                                                    </svg>
+                                                    Code
+                                                </button>
+                                                {% else %}
+                                                <button type="button" class="view-code-btn" disabled
+                                                    title="No code submitted yet"
+                                                    style="opacity: 0.35; cursor: not-allowed;">
+                                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+                                                        stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                                        stroke-linejoin="round">
+                                                        <polyline points="16 18 22 12 16 6"></polyline>
+                                                        <polyline points="8 6 2 12 8 18"></polyline>
+                                                    </svg>
+                                                    Code
+                                                </button>
+                                                {% endif %}
+                                                <button type="button" class="live-view-btn"
+                                                    data-task-id="{{ task._id }}" data-task-title="{{ task.title }}"
+                                                    data-task-type="{{ task.type }}"
+                                                    onclick="openLiveCodeView(this.dataset.taskId, this.dataset.taskTitle, this.dataset.taskType)"
+                                                    title="Live Code View">
+                                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+                                                        stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                                        stroke-linejoin="round">
+                                                        <circle cx="12" cy="12" r="10"></circle>
+                                                        <circle cx="12" cy="12" r="3"></circle>
+                                                    </svg>
+                                                    Live
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                    {% if not tasks %}
+                                    <tr>
+                                        <td colspan="6" class="inline-empty-state">No tasks for this project yet.</td>
+                                    </tr>
+                                    {% endif %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </section>
+                </div>
+
+                <!-- Assigned Developers (collapsible) -->
+                <section class="panel overview-panel" style="margin-bottom: 24px;">
+                    <div class="project-action-row" style="justify-content: space-between; padding: 16px 24px; cursor: pointer;"
+                        onclick="document.getElementById('devListCollapsible').style.display = document.getElementById('devListCollapsible').style.display === 'none' ? 'block' : 'none'; this.querySelector('.collapse-icon').textContent = document.getElementById('devListCollapsible').style.display === 'none' ? '▶' : '▼';">
+                        <div class="project-action-row">
+                            <div class="section-accent" style="width: 3px; min-width: 3px;">
+                            </div>
+                            <h2 class="section-title" style="margin-bottom: 0; font-size: 1.1rem; font-weight: 600;">
+                                Assigned Developers</h2>
+                            <span class="developer-count-chip">{{
+                                project.assigned_developers|length }}</span>
+                        </div>
+                        <span class="collapse-icon"
+                            style="font-size: 0.75rem; color: var(--text-muted); transition: transform 0.2s;">▼</span>
+                    </div>
+                    <div id="devListCollapsible"
+                        style="padding: 0 24px 20px; border-top: 1px solid var(--border-subtle);">
+                        {% if assigned_developer_details %}
+                        <div class="assigned-dev-list" style="margin-top: 16px;">
+                            {% for dev in assigned_developer_details %}
+                            <div class="assigned-dev-item">
+                                <span class="developer-chip">{{ dev.username }}</span>
+                                <span class="availability-pill availability-{{ 'free' if dev.is_free else 'busy' }}">
+                                    {{ dev.availability_label }}
+                                </span>
+                                <span class="developer-detail-text">{{ dev.availability_detail }}</span>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        {% else %}
+                        <p class="section-description" style="font-style: italic; margin-top: 16px;">No developers
+                            assigned.</p>
+                        {% endif %}
+                    </div>
+                </section>
+            </div>
+        </main>
+    </div>
+
+    <!-- Live Code View Modal -->
+    <div id="liveCodeModal" class="modal">
+        <div class="modal-content live-modal-content"
+            style="max-width: 1200px; border-radius: 12px; border: 1px solid rgba(0, 0, 0, 0.2); box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);">
+            <div class="mac-window-header">
+                <div class="mac-dots">
+                    <div class="mac-dot close" onclick="closeLiveCodeModal()"></div>
+                    <div class="mac-dot minimize"></div>
+                    <div class="mac-dot fullscreen"></div>
+                </div>
+                <div class="mac-title">
+                    <span class="live-indicator" id="liveIndicator">🔴</span>
+                    <span id="liveModalTaskTitle">Live Code View</span>
+                    <span class="live-status-badge" id="liveStatusBadge">LIVE</span>
+                </div>
+                <div class="modal-header-actions">
+                    <button type="button" class="secondary-button modal-back-btn" onclick="closeLiveCodeModal()">
+                        Back to Project
+                    </button>
+                </div>
+            </div>
+            <div class="modal-body" style="padding: 0;">
+                <div id="live-monaco-editor-container" style="width: 100%; height: 600px;"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Submitted Code View Modal -->
+    <div id="submittedCodeModal" class="modal">
+        <div class="modal-content live-modal-content"
+            style="max-width: 1200px; border-radius: 12px; border: 1px solid rgba(0, 0, 0, 0.2); box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);">
+            <div class="mac-window-header">
+                <div class="mac-dots">
+                    <div class="mac-dot close" onclick="closeSubmittedCodeModal()"></div>
+                    <div class="mac-dot minimize"></div>
+                    <div class="mac-dot fullscreen"></div>
+                </div>
+                <div class="mac-title">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#4a4a4a" stroke-width="2.5"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="20 6 9 17 4 12"></polyline>
+                    </svg>
+                    <span id="submittedModalTaskTitle">Submitted Code</span>
+                    <span
+                        style="background: rgba(0,0,0,0.05); color: #666; padding: 2px 6px; border-radius: 4px; font-size: 0.65rem; font-weight: 700; border: 1px solid rgba(0,0,0,0.1);">READ-ONLY</span>
+                </div>
+                <div class="modal-header-actions">
+                    <!-- Tab Switcher (Mac Style) -->
+                    <div id="submittedTabBar" class="mac-tab-bar">
+                        <button id="tabCodeBtn" onclick="switchSubmittedTab('code')" class="mac-tab-btn active">
+                            Code
+                        </button>
+                        <button id="tabPreviewBtn" onclick="switchSubmittedTab('preview')" class="mac-tab-btn">
+                            Preview
+                        </button>
+                    </div>
+                    <button type="button" class="secondary-button modal-back-btn" onclick="closeSubmittedCodeModal()">
+                        Back to Project
+                    </button>
+                </div>
+            </div>
+            <div id="submittedCodeLoading"
+                style="padding: 32px; text-align: center; color: #888; font-size: 0.9rem; display:none;">
+                Loading submitted code...
+            </div>
+            <div class="modal-body" style="padding: 0; position: relative;">
+                <!-- Code Editor Panel -->
+                <div id="submitted-code-panel" style="width: 100%; height: 600px;">
+                    <div id="submitted-monaco-editor-container" style="width: 100%; height: 600px;"></div>
+                </div>
+                <!-- Preview Panel (iframe) -->
+                <div id="submitted-preview-panel" style="width: 100%; height: 600px; display: none; background: #fff;">
+                    <iframe id="submitted-preview-iframe" style="width: 100%; height: 100%; border: none;"
+                        sandbox="allow-scripts" title="Code Preview">
+                    </iframe>
+                </div>
+                <!-- Run Output Panel (terminal) -->
+                <div id="submitted-run-panel" tabindex="0"
+                    style="width: 100%; height: 600px; display: none; background: #ffffff; overflow: auto; padding: 20px; outline: none; cursor: default;">
+                    <pre id="submittedRunContent"
+                        style="color: #000000; font-family: 'Menlo', 'Monaco', 'Courier New', monospace; font-size: 14px; white-space: pre-wrap; margin: 0; display: inline;"></pre>
+                    <span id="submittedTerminalCursor"
+                        style="display: inline-block; width: 8px; height: 16px; background: #000000; vertical-align: middle; animation: blink 1s step-end infinite;"></span>
+                </div>
+            </div>
+            <div class="review-actions" style="padding: 16px 20px; margin-top: 0; justify-content: flex-end; border-top: 1px solid #444;">
+                <button type="button" class="secondary-button" onclick="pushSubmittedTaskToGitHub()">Push to GitHub</button>
+                <button type="button" class="secondary-button" onclick="openSubmittedTaskGitHubUrl()">View on GitHub</button>
+            </div>
+            <!-- Review Section -->
+            <div id="reviewSection" class="modal-review-section"
+                style="display: none; padding: 20px; background: #2d2d2d; border-top: 1px solid #444; border-bottom-left-radius: 12px; border-bottom-right-radius: 12px;">
+                <h4 class="review-header" style="color: #e0e0e0; margin-bottom: 12px; font-size: 1rem;">Reviewer
+                    Feedback
+                </h4>
+                <textarea id="reviewComments" class="review-comments-input"
+                    style="width: 100%; min-height: 80px; padding: 12px; border-radius: 8px; background: #1e1e1e; border: 1px solid #444; color: #e0e0e0; font-family: inherit; margin-bottom: 16px; resize: vertical;"
+                    placeholder="Type your feedback here... REQUIRED for reassigning."></textarea>
+                <div class="review-actions" style="display: flex; gap: 12px; justify-content: flex-end;">
+                    <button type="button" class="approve-btn" onclick="approveSubmittedTask()">Approve & Close
+                        Task</button>
+                    <button type="button" class="reject-btn" onclick="rejectSubmittedTask()">Reassign to
+                        Developer</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <style>
+        @keyframes blink {
+            50% {
+                opacity: 0;
+            }
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(9, 9, 11, 0.6);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+        }
+
+        .modal-content {
+            background-color: #ffffff;
+            margin: 5% auto;
+            padding: 0;
+            border: 1px solid rgba(0, 0, 0, 0.2);
+            width: 90%;
+            max-width: 1000px;
+            border-radius: 12px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .mac-window-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 16px;
+            background: #f0f0f0;
+            border-bottom: 1px solid #d1d1d1;
+            color: #333;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            border-top-left-radius: 11px;
+            border-top-right-radius: 11px;
+        }
+
+        .mac-dots {
+            display: flex;
+            gap: 8px;
+            width: 180px;
+            /* match the right side spacer to center title perfectly */
+        }
+
+        .mac-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+
+        .mac-dot.close {
+            background: #ff5f56;
+            border: 1px solid #e0443e;
+            cursor: pointer;
+        }
+
+        .mac-dot.minimize {
+            background: #ffbd2e;
+            border: 1px solid #dea123;
+        }
+
+        .mac-dot.fullscreen {
+            background: #27c93f;
+            border: 1px solid #1aab29;
+        }
+
+        .mac-title {
+            flex-grow: 1;
+            text-align: center;
+            font-size: 13px;
+            font-weight: 600;
+            color: #4A4A4A;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .modal-body {
+            padding: 0;
+            background-color: #ffffff;
+            flex-grow: 1;
+            border-bottom-left-radius: 11px;
+            border-bottom-right-radius: 11px;
+            overflow: hidden;
+        }
+
+        .modal-header-actions {
+            display: flex;
+            justify-content: flex-end;
+            align-items: center;
+            gap: 10px;
+            min-width: 220px;
+        }
+
+        .modal-back-btn {
+            padding: 0.45rem 0.85rem;
+            min-height: auto;
+            font-size: 0.78rem;
+            white-space: nowrap;
+        }
+
+        /* Dark Mode Overrides for Mac Window */
+        [data-theme="dark"] .modal-content {
+            background-color: #1e1e1e;
+            border-color: rgba(255, 255, 255, 0.1);
+        }
+
+        [data-theme="dark"] .mac-window-header {
+            background: #2d2d2d;
+            border-bottom-color: #444;
+            color: #e0e0e0;
+        }
+
+        [data-theme="dark"] .mac-title {
+            color: #e0e0e0;
+        }
+
+        [data-theme="dark"] .modal-body {
+            background-color: #1e1e1e;
+        }
+
+        [data-theme="dark"] #submitted-run-panel {
+            background: #1e1e1e !important;
+        }
+
+        [data-theme="dark"] #submittedRunContent {
+            color: #56ffd6 !important;
+        }
+
+        [data-theme="dark"] #submittedTerminalCursor {
+            background: #56ffd6 !important;
+        }
+
+        .mac-tab-bar {
+            display: flex;
+            gap: 2px;
+            background: rgba(0, 0, 0, 0.06);
+            border: 1px solid rgba(0, 0, 0, 0.1);
+            border-radius: 6px;
+            padding: 2px;
+        }
+
+        .mac-tab-btn {
+            padding: 4px 12px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            border: 1px solid transparent;
+            border-radius: 4px;
+            cursor: pointer;
+            background: transparent;
+            color: #666;
+            transition: all 0.2s;
+        }
+
+        .mac-tab-btn:hover {
+            background: rgba(0, 0, 0, 0.03);
+        }
+
+        .mac-tab-btn.active {
+            background: #fff;
+            color: #333;
+            border-color: rgba(0, 0, 0, 0.1);
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+        }
+
+        #tabCodeBtn.active {
+            background: #4f46e5 !important;
+            color: #fff !important;
+        }
+
+        #tabPreviewBtn.active {
+            background: #10b981 !important;
+            color: #fff !important;
+        }
+
+        /* Dark Mode */
+        [data-theme="dark"] .mac-tab-bar {
+            background: rgba(255, 255, 255, 0.1) !important;
+            border-color: rgba(255, 255, 255, 0.15) !important;
+        }
+
+        [data-theme="dark"] .mac-tab-btn {
+            color: #aaa !important;
+        }
+
+        [data-theme="dark"] .mac-tab-btn:hover {
+            background: rgba(255, 255, 255, 0.05) !important;
+        }
+
+        [data-theme="dark"] .mac-tab-btn.active {
+            border-color: transparent !important;
+        }
+
+        /* Specific active colors in dark mode (override general .active) */
+        [data-theme="dark"] #tabCodeBtn.active {
+            background: #4f46e5 !important;
+            color: #fff !important;
+        }
+
+        [data-theme="dark"] #tabPreviewBtn.active {
+            background: #10b981 !important;
+            color: #fff !important;
+        }
+
+        [data-theme="dark"] .mac-tab-btn:not(.active) {
+            background: transparent !important;
+            color: #aaa !important;
+        }
+
+        [data-theme="dark"] #submittedModalTaskTitle+span {
+            background: rgba(255, 255, 255, 0.1) !important;
+            color: #aaa !important;
+            border-color: rgba(255, 255, 255, 0.2) !important;
+        }
+
+        .close-modal {
+            color: #71717a;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: color 0.2s;
+        }
+
+        .close-modal:hover {
+            color: white;
+        }
+
+        .live-indicator {
+            font-size: 12px;
+            animation: blink 2s infinite;
+        }
+
+        .live-indicator.ended {
+            animation: none;
+            opacity: 0.5;
+        }
+
+        .live-status-badge {
+            background-color: rgba(239, 68, 68, 0.2);
+            color: #ef4444;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            font-weight: 700;
+            border: 1px solid rgba(239, 68, 68, 0.5);
+        }
+
+        .live-status-badge.ended {
+            background-color: rgba(156, 163, 175, 0.2);
+            color: #9ca3af;
+            border-color: rgba(156, 163, 175, 0.5);
+        }
+
+        @keyframes blink {
+            0% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.4;
+            }
+
+            100% {
+                opacity: 1;
+            }
+        }
+    </style>
+
+    <!-- Complete Project Confirmation Modal -->
+    <div id="completeProjectModal" class="modal">
+        <div class="modal-content" style="max-width: 450px; border-radius: 12px; border: 1px solid #059669;">
+            <div class="modal-header" style="background-color: #022c22; border-bottom: 1px solid #10b981;">
+                <h3 style="color: #10b981; margin: 0;">Complete Project</h3>
+                <span class="close-modal" onclick="closeCompleteProjectModal()">&times;</span>
+            </div>
+            <div class="modal-body" style="padding: 24px;">
+                <p style="color: #e5e5e5; font-size: 1.05rem; margin-bottom: 24px;">
+                    Are you sure you want to mark <strong id="completeProjectName" style="color: white;"></strong> as
+                    completed?
+                </p>
+                <div style="display: flex; justify-content: flex-end; gap: 12px;">
+                    <button type="button" class="view-code-btn" style="background-color: #4b5563;"
+                        onclick="closeCompleteProjectModal()">Cancel</button>
+                    <button type="button" class="submit-button"
+                        style="background: linear-gradient(135deg, #10b981, #059669); padding: 10px 18px; color: white; border: none; border-radius: 8px; cursor: pointer;"
+                        onclick="confirmCompleteProject()">Yes, Complete Project</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>var require = { paths: { 'vs': 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.45.0/min/vs' } };</script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.45.0/min/vs/loader.min.js"></script>
+    <script>
+        let liveEditor = null;
+        let managerWebSocket = null;
+        let currentLiveTaskId = null;
+        let submittedEditor = null;
+
+        // ── Submitted Code Modal ──────────────────────────────────────
+        let currentSubmittedTaskType = 'backend';
+        let currentSubmittedCode = '';
+        let currentReviewTaskId = null;
+
+        let projectToCompleteId = null;
+
+        function openCompleteProjectModal(projectId, projectTitle) {
+            projectToCompleteId = projectId;
+            document.getElementById('completeProjectName').textContent = projectTitle;
+            document.getElementById('completeProjectModal').style.display = 'block';
+        }
+
+        function closeCompleteProjectModal() {
+            projectToCompleteId = null;
+            document.getElementById('completeProjectModal').style.display = 'none';
+        }
+
+        function confirmCompleteProject() {
+            if (projectToCompleteId) {
+                document.getElementById('complete-form-' + projectToCompleteId).submit();
+            }
+        }
+
+        function openSubmittedCodeModal(taskId, title, taskType, status) {
+            currentReviewTaskId = taskId;
+            currentSubmittedTaskType = taskType;
+            document.getElementById('submittedModalTaskTitle').innerText = title + ' — Submitted Code';
+            document.getElementById('submittedCodeModal').style.display = 'block';
+            document.getElementById('submittedCodeLoading').style.display = 'block';
+
+            // Show review section only if status is submitted_for_review
+            const reviewSection = document.getElementById('reviewSection');
+            if (reviewSection) {
+                reviewSection.style.display = (status === 'submitted_for_review') ? 'block' : 'none';
+                document.getElementById('reviewComments').value = '';
+            }
+
+            // Setup Tab based on task type
+            const previewBtn = document.getElementById('tabPreviewBtn');
+            if (taskType === 'frontend') {
+                previewBtn.innerHTML = '&#9654; Preview';
+                previewBtn.style.display = '';
+            } else {
+                previewBtn.innerHTML = '&#9654; Run';
+                previewBtn.style.display = '';
+            }
+
+            // Always start on Code tab
+            switchSubmittedTab('code', true);
+
+            const language = (taskType === 'frontend') ? 'html' : 'python';
+
+            fetch(`/get_task_code/${taskId}`)
+                .then(res => res.json())
+                .then(data => {
+                    currentSubmittedCode = data.code || '// No code submitted yet.';
+                    document.getElementById('submittedCodeLoading').style.display = 'none';
+
+                    // Update preview if already on preview tab
+                    const previewBtn = document.getElementById('tabPreviewBtn');
+                    if (previewBtn.classList.contains('active') && currentSubmittedTaskType === 'frontend') {
+                        updateSubmittedPreview();
+                    }
+
+                    require(['vs/editor/editor.main'], function () {
+                        const currentTheme = document.documentElement.getAttribute('data-theme') || 'dark';
+                        const monacoTheme = currentTheme === 'dark' ? 'vs-dark' : 'vs';
+                        if (!submittedEditor) {
+                            submittedEditor = monaco.editor.create(
+                                document.getElementById('submitted-monaco-editor-container'),
+                                {
+                                    value: currentSubmittedCode,
+                                    language: language,
+                                    theme: monacoTheme,
+                                    readOnly: true,
+                                    automaticLayout: true,
+                                    minimap: { enabled: true },
+                                    scrollBeyondLastLine: false,
+                                    fontSize: 14,
+                                    wordWrap: 'on'
+                                }
+                            );
+                        } else {
+                            const model = submittedEditor.getModel();
+                            monaco.editor.setModelLanguage(model, language);
+                            monaco.editor.setTheme(monacoTheme);
+                            model.setValue(currentSubmittedCode);
+                            setTimeout(() => submittedEditor.layout(), 50);
+                        }
+                    });
+                })
+                .catch(() => {
+                    document.getElementById('submittedCodeLoading').style.display = 'none';
+                    currentSubmittedCode = '// Error loading submitted code.';
+                    if (submittedEditor) {
+                        submittedEditor.getModel().setValue(currentSubmittedCode);
+                    }
+                });
+        }
+
+        function switchSubmittedTab(tab, silent) {
+            const codePanel = document.getElementById('submitted-code-panel');
+            const previewPanel = document.getElementById('submitted-preview-panel');
+            const runPanel = document.getElementById('submitted-run-panel');
+            const codeBtn = document.getElementById('tabCodeBtn');
+            const previewBtn = document.getElementById('tabPreviewBtn');
+
+            // Reset panels
+            codePanel.style.display = 'none';
+            previewPanel.style.display = 'none';
+            runPanel.style.display = 'none';
+
+            // Toggle classes only
+            codeBtn.classList.remove('active');
+            previewBtn.classList.remove('active');
+
+            if (tab === 'code') {
+                codePanel.style.display = 'block';
+                codeBtn.classList.add('active');
+                if (!silent && submittedEditor) setTimeout(() => submittedEditor.layout(), 50);
+            } else if (tab === 'preview') {
+                previewBtn.classList.add('active');
+                if (currentSubmittedTaskType === 'frontend') {
+                    previewPanel.style.display = 'block';
+                    updateSubmittedPreview();
+                } else {
+                    runPanel.style.display = 'block';
+                    if (!silent) runSubmittedPython();
+                }
+            }
+        }
+
+        function updateSubmittedPreview() {
+            const iframe = document.getElementById('submitted-preview-iframe');
+            if (!iframe) return;
+            const codeToPreview = (submittedEditor && submittedEditor.getModel())
+                ? submittedEditor.getValue()
+                : currentSubmittedCode;
+
+            iframe.srcdoc = codeToPreview || "<html><body><p style='color:#888; font-family:sans-serif; text-align:center; margin-top:100px;'>No content to preview</p></body></html>";
+        }
+
+        let submittedRunWS = null;
+
+        function runSubmittedPython() {
+            if (submittedRunWS) {
+                submittedRunWS.close();
+                submittedRunWS = null;
+            }
+
+            const content = document.getElementById('submittedRunContent');
+            const panel = document.getElementById('submitted-run-panel');
+            content.textContent = 'Connecting to interactive session...\n';
+            panel.focus();
+
+            const codeToRun = submittedEditor ? submittedEditor.getValue() : currentSubmittedCode;
+
+            // Build WebSocket URL
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsUrl = `${protocol}//${window.location.host}/api/run_python_ws`;
+
+            submittedRunWS = new WebSocket(wsUrl);
+
+            submittedRunWS.onopen = () => {
+                content.textContent = ''; // Clear "Connecting..." message
+                submittedRunWS.send(JSON.stringify({ code: codeToRun }));
+            };
+
+            submittedRunWS.onmessage = (event) => {
+                const msg = JSON.parse(event.data);
+                if (msg.type === 'output') {
+                    content.textContent += msg.data;
+                    panel.scrollTop = panel.scrollHeight;
+                } else if (msg.type === 'timeout') {
+                    content.textContent += '\n\n' + msg.message;
+                } else if (msg.type === 'error') {
+                    content.textContent += '\n\nError: ' + msg.message;
+                } else if (msg.type === 'exit') {
+                    content.textContent += `\n\n[Process exited with code ${msg.code}]`;
+                }
+            };
+
+            submittedRunWS.onclose = () => {
+                submittedRunWS = null;
+            };
+
+            submittedRunWS.onerror = (err) => {
+                content.textContent += '\n\nWebSocket Error. Connection failed.';
+                console.error('WS Error:', err);
+            };
+
+            // Capture keyboard input
+            panel.onkeydown = (e) => {
+                if (!submittedRunWS || submittedRunWS.readyState !== WebSocket.OPEN) return;
+
+                if (e.key === 'Enter') {
+                    submittedRunWS.send(JSON.stringify({ type: 'input', data: '\n' }));
+                    content.textContent += '\n';
+                } else if (e.key.length === 1) {
+                    submittedRunWS.send(JSON.stringify({ type: 'input', data: e.key }));
+                    content.textContent += e.key;
+                } else if (e.key === 'Backspace') {
+                    // Primitive backspace support (visual only)
+                    // In a real terminal we'd send \b, but here we just pop the last char if it's on current line
+                    // For now, let's keep it simple and just send the key if the backend supports it.
+                    // Python input() doesn't handle naked backspaces well over pipe without a proper PTY.
+                    // We'll skip complex backspace for this MVP.
+                }
+                panel.scrollTop = panel.scrollHeight;
+            };
+        }
+
+        function closeSubmittedCodeModal() {
+            document.getElementById('submittedCodeModal').style.display = 'none';
+            // Reset preview iframe
+            const iframe = document.getElementById('submitted-preview-iframe');
+            if (iframe) iframe.srcdoc = '';
+            currentReviewTaskId = null;
+        }
+
+        async function approveSubmittedTask() {
+            if (!currentReviewTaskId) return;
+            const confirmed = await window.appConfirm({
+                title: 'Approve submitted task?',
+                message: 'This will mark the task as approved and complete.',
+                confirmText: 'Approve task',
+                tone: 'success'
+            });
+            if (!confirmed) return;
+
+            try {
+                const res = await fetch('/api/approve_task', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ task_id: currentReviewTaskId })
+                });
+
+                const data = await res.json().catch(() => ({}));
+                if (res.ok) {
+                    window.queueAppNotice(data.message || 'Task approved successfully!', { type: 'success' });
+                    window.location.reload();
+                } else {
+                    window.appNotice(data.detail || 'Failed to approve task', { type: 'error' });
+                }
+            } catch (e) {
+                console.error(e);
+                window.appNotice('Connection error while approving task', { type: 'error' });
+            }
+        }
+
+        async function rejectSubmittedTask() {
+            if (!currentReviewTaskId) return;
+            const comments = document.getElementById('reviewComments').value.trim();
+            if (!comments) {
+                window.appNotice('Please provide feedback comments before reassigning the task.', { type: 'warning' });
+                return;
+            }
+
+            try {
+                const res = await fetch('/api/reject_task', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        task_id: currentReviewTaskId,
+                        comments: comments
+                    })
+                });
+
+                if (res.ok) {
+                    window.queueAppNotice('Task reassigned to developer with your feedback.', { type: 'success' });
+                    window.location.reload();
+                } else {
+                    const data = await res.json();
+                    window.appNotice(data.detail || 'Failed to reassign task', { type: 'error' });
+                }
+            } catch (e) {
+                console.error(e);
+                window.appNotice('Connection error while reassigning task', { type: 'error' });
+            }
+        }
+
+        async function pushSubmittedTaskToGitHub() {
+            if (!currentReviewTaskId) {
+                window.appNotice('Open a submitted task first before pushing code to GitHub.', { type: 'warning' });
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/tasks/${currentReviewTaskId}/push_github`, { method: 'POST' });
+                const data = await response.json().catch(() => ({}));
+                if (!response.ok) {
+                    window.appNotice(data.detail || 'Failed to push code to GitHub', { type: 'error' });
+                    return;
+                }
+                window.queueAppNotice(data.message || 'Code pushed to GitHub.', { type: 'success' });
+                if (data.url) {
+                    window.open(data.url, '_blank', 'noopener');
+                }
+            } catch (error) {
+                console.error(error);
+                window.appNotice('Failed to push code to GitHub', { type: 'error' });
+            }
+        }
+
+        async function openSubmittedTaskGitHubUrl() {
+            if (!currentReviewTaskId) {
+                window.appNotice('Open a submitted task first before opening its GitHub link.', { type: 'warning' });
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/task_github_url/${currentReviewTaskId}`);
+                const data = await response.json().catch(() => ({}));
+                if (!response.ok) {
+                    window.appNotice(data.detail || 'Code not available on GitHub', { type: 'error' });
+                    return;
+                }
+                if (data.url) {
+                    window.open(data.url, '_blank', 'noopener');
+                }
+            } catch (error) {
+                console.error(error);
+                window.appNotice('Error opening GitHub link', { type: 'error' });
+            }
+        }
+
+        async function pushCompletedProjectToGitHub() {
+            const pushButton = document.getElementById('pushProjectGithubBtn');
+            const originalLabel = pushButton ? pushButton.textContent : '';
+            if (pushButton) {
+                pushButton.disabled = true;
+                pushButton.textContent = 'Pushing...';
+            }
+
+            try {
+                const response = await fetch(`/api/projects/{{ project._id }}/push_github`, { method: 'POST' });
+                const data = await response.json().catch(() => ({}));
+                if (!response.ok) {
+                    window.appNotice(data.detail || 'Failed to push completed project to GitHub', { type: 'error' });
+                    return;
+                }
+                window.queueAppNotice(data.message || 'Completed project pushed to GitHub.', { type: 'success' });
+                if (data.url) {
+                    window.open(data.url, '_blank', 'noopener');
+                }
+            } catch (error) {
+                console.error(error);
+                window.appNotice('Failed to push completed project to GitHub', { type: 'error' });
+            } finally {
+                if (pushButton) {
+                    pushButton.disabled = false;
+                    pushButton.textContent = originalLabel;
+                }
+            }
+        }
+
+        async function openCompletedProjectGitHubUrl() {
+            try {
+                const response = await fetch(`/api/project_github_url/{{ project._id }}`);
+                const data = await response.json().catch(() => ({}));
+                if (!response.ok) {
+                    window.appNotice(data.detail || 'Project is not available on GitHub yet', { type: 'error' });
+                    return;
+                }
+                if (data.url) {
+                    window.open(data.url, '_blank', 'noopener');
+                }
+            } catch (error) {
+                console.error(error);
+                window.appNotice('Error opening project GitHub link', { type: 'error' });
+            }
+        }
+
+        function openLiveCodeView(taskId, title, taskType) {
+            currentLiveTaskId = taskId;
+            document.getElementById('liveModalTaskTitle').innerText = 'Live: ' + title;
+            document.getElementById('liveCodeModal').style.display = 'block';
+
+            var language = 'python';
+            if (taskType === 'frontend') language = 'html';
+
+            const currentTheme = document.documentElement.getAttribute('data-theme') || 'dark';
+            const monacoTheme = currentTheme === 'dark' ? 'vs-dark' : 'vs';
+            if (!liveEditor) {
+                require(['vs/editor/editor.main'], function () {
+                    liveEditor = monaco.editor.create(document.getElementById('live-monaco-editor-container'), {
+                        value: '// Connecting to live code view...\n// Waiting for code updates...',
+                        language: language,
+                        theme: monacoTheme,
+                        readOnly: true,
+                        automaticLayout: true,
+                        minimap: { enabled: false },
+                        scrollBeyondLastLine: false,
+                        fontSize: 14
+                    });
+                    connectManagerWebSocket(taskId);
+                });
+            } else {
+                var model = liveEditor.getModel();
+                monaco.editor.setModelLanguage(model, language);
+                monaco.editor.setTheme(monacoTheme);
+                model.setValue('// Connecting to live code view...\n// Waiting for code updates...');
+                connectManagerWebSocket(taskId);
+                setTimeout(() => liveEditor.layout(), 50);
+            }
+        }
+
+        function closeLiveCodeModal() {
+            document.getElementById('liveCodeModal').style.display = 'none';
+            if (managerWebSocket) {
+                managerWebSocket.close();
+                managerWebSocket = null;
+            }
+            currentLiveTaskId = null;
+        }
+
+        function updateLiveStatusEnded() {
+            const indicator = document.getElementById('liveIndicator');
+            const badge = document.getElementById('liveStatusBadge');
+            if (indicator && badge) {
+                indicator.textContent = '⚫';
+                indicator.className = 'live-indicator ended';
+                badge.textContent = 'LIVE ENDED';
+                badge.className = 'live-status-badge ended';
+            }
+        }
+
+        function connectManagerWebSocket(taskId) {
+            if (managerWebSocket) {
+                managerWebSocket.close();
+            }
+
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsUrl = `${protocol}//${window.location.host}/ws/manager/${taskId}`;
+
+            managerWebSocket = new WebSocket(wsUrl);
+
+            managerWebSocket.onopen = function () {
+                console.log('Manager WebSocket connected');
+                const indicator = document.getElementById('liveIndicator');
+                const badge = document.getElementById('liveStatusBadge');
+                if (indicator) {
+                    indicator.textContent = '🔴';
+                    indicator.className = 'live-indicator';
+                }
+                if (badge) {
+                    badge.textContent = 'LIVE';
+                    badge.className = 'live-status-badge';
+                }
+            };
+
+            managerWebSocket.onmessage = function (event) {
+                const message = JSON.parse(event.data);
+                if (message.type === 'code_update') {
+                    if (liveEditor && liveEditor.getModel()) {
+                        liveEditor.getModel().setValue(message.code || '');
+                    }
+                } else if (message.type === 'developer_active') {
+                    // Active
+                } else if (message.type === 'developer_disconnected') {
+                    updateLiveStatusEnded();
+                    if (liveEditor && liveEditor.getModel()) {
+                        const currentValue = liveEditor.getModel().getValue();
+                        if (!currentValue.includes('// Live view ended')) {
+                            liveEditor.getModel().setValue(currentValue + '\n\n// ⚫ Live view ended - Developer stopped or disconnected');
+                        }
+                    }
+                }
+            };
+
+            managerWebSocket.onerror = function (error) {
+                updateLiveStatusEnded();
+                if (liveEditor && liveEditor.getModel()) {
+                    liveEditor.getModel().setValue(liveEditor.getModel().getValue() + '\n\n// Error connecting to live code view. Connection ended.');
+                }
+            };
+
+            managerWebSocket.onclose = function () {
+                updateLiveStatusEnded();
+                if (liveEditor && liveEditor.getModel()) {
+                    const currentValue = liveEditor.getModel().getValue();
+                    if (!currentValue.includes('// Live view ended')) {
+                        liveEditor.getModel().setValue(currentValue + '\n\n// ⚫ Live view ended - Developer stopped or disconnected');
+                    }
+                }
+            };
+        }
+
+        window.onclick = function (event) {
+            if (event.target == document.getElementById('liveCodeModal')) {
+                closeLiveCodeModal();
+            }
+            if (event.target == document.getElementById('submittedCodeModal')) {
+                closeSubmittedCodeModal();
+            }
+            if (event.target == document.getElementById('completeProjectModal')) {
+                closeCompleteProjectModal();
+            }
+        }
+
+        document.addEventListener('keydown', function (event) {
+            if (event.key !== 'Escape') return;
+            if (document.getElementById('submittedCodeModal').style.display === 'block') {
+                closeSubmittedCodeModal();
+                return;
+            }
+            if (document.getElementById('liveCodeModal').style.display === 'block') {
+                closeLiveCodeModal();
+                return;
+            }
+            if (document.getElementById('completeProjectModal').style.display === 'block') {
+                closeCompleteProjectModal();
+            }
+        });
+
+        // Listen for theme changes to update Monaco
+        const observer = new MutationObserver((mutations) => {
+            mutations.forEach((mutation) => {
+                if (mutation.attributeName === 'data-theme') {
+                    const newTheme = document.documentElement.getAttribute('data-theme');
+                    const monacoTheme = newTheme === 'dark' ? 'vs-dark' : 'vs';
+                    if (submittedEditor) monaco.editor.setTheme(monacoTheme);
+                    if (liveEditor) monaco.editor.setTheme(monacoTheme);
+                }
+            });
+        });
+        observer.observe(document.documentElement, { attributes: true });
+    </script>
+    {% include 'chat_widget.html' %}
+
+</body>
+
+</html>

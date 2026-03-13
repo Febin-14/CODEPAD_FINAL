@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Developer Analytics | CodePad</title>
+    <link rel="stylesheet" href="{{ url_for('static', path='style.css') }}?v=11">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script src="{{ url_for('static', path='ui_feedback.js') }}"></script>
+    <script src="{{ url_for('static', path='theme.js') }}"></script>
+    <script src="{{ url_for('static', path='profile_popover.js') }}?v=2" defer></script>
+</head>
+
+<body class="app-shell analytics-shell">
+    <div class="app-wrapper">
+
+    <header class="top-bar">
+            <div class="header-container">
+                <h1 class="brand-title">CodePad</h1>
+                <div class="profile-section">
+                    <a href="/dashboard" class="nav-link">Back to Dashboard</a>
+                    <span class="greeting">Hello, <strong>{{ username }}</strong></span>
+                    {% include 'profile_popover.html' %}
+                    
+                    <a href="/logout" class="logout-link">Logout</a>
+                    
+                    <button id="theme-toggle" class="theme-toggle" aria-label="Toggle Theme" title="Toggle Theme">
+                        <img src="/static/moon.png" id="theme-icon" class="theme-icon" alt="Theme Toggle">
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <main class="main-content">
+            <div class="layout-grid">
+                <section class="panel overview-panel" style="grid-column: 1 / -1;">
+                    <div class="panel-header">
+                        <h2 class="section-title">Developer Analytics</h2>
+                        <p class="section-description">Attendance, work time, and task progress by developer</p>
+                    </div>
+                    <div id="analyticsLoading" class="analytics-loading">Loading analytics…</div>
+                    <div id="analyticsContent" class="analytics-content" style="display: none;">
+                        <div class="charts-row">
+                            <div class="chart-container">
+                                <h3 class="chart-title">Total work time by developer (hours)</h3>
+                                <canvas id="chartWorkTime" width="400" height="220"></canvas>
+                            </div>
+                            <div class="chart-container">
+                                <h3 class="chart-title">Tasks: completed vs pending</h3>
+                                <canvas id="chartTasks" width="400" height="220"></canvas>
+                            </div>
+                        </div>
+                        <div class="table-wrapper">
+                            <table class="data-table analytics-table">
+                                <thead>
+                                    <tr>
+                                        <th>Developer</th>
+                                        <th>Role</th>
+                                        <th>Tasks completed</th>
+                                        <th>Tasks pending</th>
+                                        <th>In progress</th>
+                                        <th>Submitted for review</th>
+                                        <th>Sessions</th>
+                                        <th>Total work time</th>
+                                        <th>Attendance / Sessions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="analyticsTableBody">
+                                </tbody>
+                            </table>
+                        </div>
+                        <div id="sessionsByDeveloper" class="sessions-by-developer"></div>
+                    </div>
+                    <div id="analyticsError" class="analytics-error" style="display: none;"></div>
+                </section>
+            </div>
+        </main>
+    </div>
+
+    <style>
+        .analytics-loading,
+        .analytics-error {
+            padding: 24px;
+            text-align: center;
+            color: var(--text-secondary);
+        }
+
+        .analytics-error {
+            color: var(--danger);
+        }
+
+        .analytics-table {
+            font-size: 0.9rem;
+        }
+
+        .analytics-table th {
+            white-space: nowrap;
+        }
+
+        .stat-cell {
+            font-weight: 600;
+        }
+
+        .stat-done {
+            color: var(--success);
+        }
+
+        .stat-pending {
+            color: var(--warning);
+        }
+
+        .sessions-by-developer {
+            margin-top: 32px;
+        }
+
+        .dev-sessions-block {
+            margin-bottom: 28px;
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-md);
+            overflow: hidden;
+        }
+
+        .dev-sessions-title {
+            background: var(--bg-input);
+            padding: 12px 16px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            color: var(--text-primary);
+        }
+
+        .dev-sessions-title:hover {
+            background: rgba(255, 255, 255, 0.07);
+        }
+
+        .dev-sessions-body {
+            padding: 12px 16px;
+        }
+
+        .dev-sessions-body table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.85rem;
+        }
+
+        .dev-sessions-body th,
+        .dev-sessions-body td {
+            padding: 8px 12px;
+            text-align: left;
+            border-bottom: 1px solid var(--border-subtle);
+            color: var(--text-primary);
+        }
+
+        .dev-sessions-body th {
+            color: var(--text-muted);
+            font-weight: 500;
+        }
+
+        .session-duration {
+            font-weight: 500;
+            color: var(--accent-2);
+        }
+
+        .session-open {
+            color: var(--warning);
+            font-style: italic;
+        }
+
+        .view-sessions-btn {
+            background: var(--accent-1);
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.85rem;
+        }
+
+        .view-sessions-btn:hover {
+            opacity: 0.85;
+        }
+
+        .charts-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+            margin-bottom: 32px;
+        }
+
+        @media (max-width: 900px) {
+            .charts-row {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .chart-container {
+            background: var(--bg-elevated);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-md);
+            padding: 20px;
+        }
+
+        .chart-title {
+            font-size: 1rem;
+            margin-bottom: 16px;
+            color: var(--text-primary);
+        }
+    </style>
+
+    <script>
+        (function () {
+            fetch('/api/developer_analytics', { credentials: 'same-origin' })
+                .then(function (res) {
+                    if (!res.ok) throw new Error(res.status === 403 ? 'Only managers can view this page.' : 'Failed to load analytics');
+                    return res.json();
+                })
+                .then(function (data) {
+                    document.getElementById('analyticsLoading').style.display = 'none';
+                    document.getElementById('analyticsError').style.display = 'none';
+                    document.getElementById('analyticsContent').style.display = 'block';
+                    renderCharts(data.developers);
+                    renderTable(data.developers);
+                    renderSessions(data.developers);
+                })
+                .catch(function (err) {
+                    document.getElementById('analyticsLoading').style.display = 'none';
+                    document.getElementById('analyticsContent').style.display = 'none';
+                    var el = document.getElementById('analyticsError');
+                    el.style.display = 'block';
+                    el.textContent = err.message || 'Failed to load developer analytics.';
+                });
+
+            var chartWorkTime = null;
+            var chartTasks = null;
+
+            function renderCharts(developers) {
+                var labels = developers.map(function (d) { return d.username; });
+                var workHours = developers.map(function (d) { return Math.round((d.total_work_minutes || 0) / 60 * 10) / 10; });
+                var completed = developers.map(function (d) { return d.tasks_completed || 0; });
+                var pending = developers.map(function (d) { return d.tasks_pending || 0; });
+
+                if (chartWorkTime) chartWorkTime.destroy();
+                var ctxWork = document.getElementById('chartWorkTime');
+                if (ctxWork && labels.length) {
+                    chartWorkTime = new Chart(ctxWork, {
+                        type: 'bar',
+                        data: {
+                            labels: labels,
+                            datasets: [{
+                                label: 'Work time (hours)',
+                                data: workHours,
+                                backgroundColor: 'rgba(14, 165, 233, 0.6)',
+                                borderColor: 'rgb(14, 165, 233)',
+                                borderWidth: 1
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: true,
+                            plugins: { legend: { display: false } },
+                            scales: {
+                                y: { beginAtZero: true, title: { display: true, text: 'Hours' } },
+                                x: { title: { display: true, text: 'Developer' } }
+                            }
+                        }
+                    });
+                }
+
+                if (chartTasks) chartTasks.destroy();
+                var ctxTasks = document.getElementById('chartTasks');
+                if (ctxTasks && labels.length) {
+                    chartTasks = new Chart(ctxTasks, {
+                        type: 'bar',
+                        data: {
+                            labels: labels,
+                            datasets: [
+                                { label: 'Completed', data: completed, backgroundColor: 'rgba(16, 185, 129, 0.7)', borderColor: 'rgb(16, 185, 129)', borderWidth: 1 },
+                                { label: 'Pending', data: pending, backgroundColor: 'rgba(245, 158, 11, 0.7)', borderColor: 'rgb(245, 158, 11)', borderWidth: 1 }
+                            ]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: true,
+                            scales: {
+                                x: { stacked: false, title: { display: true, text: 'Developer' } },
+                                y: { stacked: false, beginAtZero: true, title: { display: true, text: 'Count' } }
+                            }
+                        }
+                    });
+                }
+            }
+
+            function formatMinutes(m) {
+                if (m == null || isNaN(m)) return '—';
+                if (m < 60) return Math.round(m) + ' min';
+                var h = Math.floor(m / 60);
+                var min = Math.round(m % 60);
+                return min > 0 ? h + 'h ' + min + 'm' : h + 'h';
+            }
+
+            function formatDate(iso) {
+                if (!iso) return '—';
+                var d = new Date(iso);
+                return d.toLocaleString();
+            }
+
+            function renderTable(developers) {
+                var tbody = document.getElementById('analyticsTableBody');
+                tbody.innerHTML = '';
+                developers.forEach(function (d) {
+                    var tr = document.createElement('tr');
+                    tr.innerHTML =
+                        '<td class="stat-cell">' + escapeHtml(d.username) + '</td>' +
+                        '<td>' + escapeHtml(d.role) + '</td>' +
+                        '<td class="stat-cell stat-done">' + d.tasks_completed + '</td>' +
+                        '<td class="stat-cell stat-pending">' + d.tasks_pending + '</td>' +
+                        '<td>' + d.tasks_in_progress + '</td>' +
+                        '<td>' + d.tasks_submitted_for_review + '</td>' +
+                        '<td>' + d.total_sessions + '</td>' +
+                        '<td>' + formatMinutes(d.total_work_minutes) + '</td>' +
+                        '<td><button type="button" class="view-sessions-btn" data-username="' + (d.username || '').replace(/\s/g, '-') + '">View sessions</button></td>';
+                    tbody.appendChild(tr);
+                });
+                tbody.querySelectorAll('.view-sessions-btn').forEach(function (btn) {
+                    btn.addEventListener('click', function () {
+                        var id = 'sessions-' + btn.getAttribute('data-username');
+                        var el = document.getElementById(id);
+                        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    });
+                });
+            }
+
+            function renderSessions(developers) {
+                var container = document.getElementById('sessionsByDeveloper');
+                container.innerHTML = '<h3 style="margin-bottom: 16px; font-size: 1.1rem;">Attendance / Sessions</h3>';
+                developers.forEach(function (d) {
+                    var block = document.createElement('div');
+                    block.className = 'dev-sessions-block';
+                    block.id = 'sessions-' + (d.username || '').replace(/\s/g, '-');
+                    var title = document.createElement('div');
+                    title.className = 'dev-sessions-title';
+                    title.innerHTML = '<span>' + escapeHtml(d.username) + '</span> <span>' + d.recent_sessions.length + ' session(s)</span>';
+                    var body = document.createElement('div');
+                    body.className = 'dev-sessions-body';
+                    var table = '<table><thead><tr><th>Login time</th><th>Logout time</th><th>Duration</th></tr></thead><tbody>';
+                    (d.recent_sessions || []).forEach(function (s) {
+                        var logoutStr = s.logout_at ? formatDate(s.logout_at) : '<span class="session-open">Open / in progress</span>';
+                        var durStr = s.duration_minutes != null ? formatMinutes(s.duration_minutes) : '—';
+                        table += '<tr><td>' + formatDate(s.login_at) + '</td><td>' + logoutStr + '</td><td class="session-duration">' + durStr + '</td></tr>';
+                    });
+                    table += '</tbody></table>';
+                    body.innerHTML = table;
+                    block.appendChild(title);
+                    block.appendChild(body);
+                    container.appendChild(block);
+                });
+            }
+
+            function escapeHtml(s) {
+                if (!s) return '';
+                var div = document.createElement('div');
+                div.textContent = s;
+                return div.innerHTML;
+            }
+        })();
+    </script>
+</body>
+
+</html>

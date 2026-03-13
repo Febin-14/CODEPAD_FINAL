@@ -1,0 +1,27 @@
+<!-- Floating Chat Widget (extracted into shared component) -->
+<div id="chatWidgetWrap" class="chat-widget-wrap">
+    <button type="button" id="chatToggleBtn" class="chat-toggle-btn" title="Group chat" aria-label="Open chat">
+        <span class="chat-badge" id="chatUnreadBadge">0</span>
+        &#128172;
+    </button>
+    <div class="chat-panel">
+        <div class="chat-panel-header">
+            <span class="chat-panel-title" id="chatPanelTitle">Team Chat</span>
+            <button type="button" id="chatPanelClose" class="chat-panel-close" aria-label="Close chat">&times;</button>
+        </div>
+        <div class="chat-mode-toggle">
+            <button type="button" id="chatModeChat" class="chat-mode-btn chat-mode-active">Chat</button>
+            <button type="button" id="chatModeAi" class="chat-mode-btn">AI</button>
+        </div>
+        <div class="chat-status" id="chatStatus">Connecting...</div>
+        <div class="chat-messages" id="chatMessages"></div>
+        <div class="chat-input-row">
+            <span id="chatVoiceWrap" class="chat-voice-wrap" style="display: none;">
+                <button type="button" id="chatVoiceBtn" class="chat-voice-btn" title="Record voice message"
+                    aria-label="Record voice">Mic</button>
+            </span>
+            <textarea id="chatInput" class="chat-input" placeholder="Type a message..." rows="1"></textarea>
+            <button type="button" id="chatSendBtn" class="chat-send-btn">Send</button>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,2442 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Developer Dashboard</title>
+    <link rel="stylesheet" href="{{ url_for('static', path='style.css') }}?v=11">
+    <script src="{{ url_for('static', path='ui_feedback.js') }}"></script>
+    <script src="{{ url_for('static', path='chat.js') }}?v=2"></script>
+    <script src="{{ url_for('static', path='profile_popover.js') }}?v=2" defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/vs2015.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.45.0/min/vs/loader.js"></script>
+    <script src="{{ url_for('static', path='theme.js') }}"></script>
+    <script>
+        // Sets up team chat for this developer's first project (if any).
+        // Clicking a project in the sidebar switches the team channel.
+        {% if projects %}
+        window.currentProjectId = "{{ projects[0]._id }}";
+        {% else %}
+        window.currentProjectId = "";
+        {% endif %}
+    </script>
+</head>
+
+<body class="app-shell developer-shell">
+    <div class="app-wrapper">
+
+        <header class="top-bar">
+            <style>
+                :root {
+                    --terminal-bg: #171613;
+                    --terminal-bg-all: #1d1c18;
+                    --terminal-accent: #b58639;
+                    --terminal-accent-soft: rgba(181, 134, 57, 0.18);
+                    --terminal-text: #f1e7cf;
+                    --terminal-muted: #b4a37c;
+                    --terminal-border: rgba(255, 255, 255, 0.08);
+                    --terminal-shadow: 0 12px 28px rgba(0, 0, 0, 0.32);
+                }
+            </style>
+            <div class="header-container">
+                <h1 class="brand-title">CodePad</h1>
+                <div class="profile-section">
+                    <span class="greeting">Hello, <strong>{{ username }}</strong></span>
+                    {% include 'profile_popover.html' %}
+
+                    <a href="/logout" class="logout-link">Logout</a>
+
+                    <button id="theme-toggle" class="theme-toggle" aria-label="Toggle Theme" title="Toggle Theme">
+                        <img src="/static/moon.png" id="theme-icon" class="theme-icon" alt="Theme Toggle">
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <main class="main-content">
+            <div class="layout-grid page-layout">
+                <section class="page-header page-header-split">
+                    <div class="page-header-copy">
+                        <h2 class="page-title">Developer Dashboard</h2>
+                        <p class="page-description">See assigned projects, active tasks, and review feedback in one place.</p>
+                    </div>
+                    <div class="summary-strip">
+                        <article class="summary-item">
+                            <span class="summary-label">Projects</span>
+                            <strong class="summary-value">{{ projects|length }}</strong>
+                        </article>
+                        <article class="summary-item">
+                            <span class="summary-label">Tasks</span>
+                            <strong class="summary-value">{{ tasks|length }}</strong>
+                        </article>
+                        <article class="summary-item">
+                            <span class="summary-label">In Progress</span>
+                            <strong class="summary-value">{{ tasks|selectattr('status', 'equalto', 'in_progress')|list|length }}</strong>
+                        </article>
+                        <article class="summary-item">
+                            <span class="summary-label">Done</span>
+                            <strong class="summary-value">{{ tasks|selectattr('status', 'equalto', 'done')|list|length }}</strong>
+                        </article>
+                    </div>
+                </section>
+
+                <div class="developer-layout">
+
+                <!-- My Projects Panel -->
+                <section class="panel projects-panel">
+                    <div class="panel-header">
+                        <h2 class="section-title">My Projects</h2>
+                        <p class="section-description">Projects you are currently assigned to</p>
+                        <div class="table-actions">
+                            <button type="button" class="secondary-button" onclick="resetProjectFilter()">Show All Tasks</button>
+                        </div>
+                    </div>
+
+                    <div class="project-list">
+                        <div id="allProjectsItem" class="project-list-item project-list-reset active"
+                            onclick="resetProjectFilter()">
+                            <div class="project-list-info">
+                                <span class="project-list-name">All Projects</span>
+                                <span class="project-list-desc">Show tasks across every assigned project</span>
+                            </div>
+                            <svg class="project-list-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <polyline points="9 18 15 12 9 6"></polyline>
+                            </svg>
+                        </div>
+                        {% for project in projects %}
+                        <div class="project-list-item"
+                            data-project-id="{{ project._id }}"
+                            onclick="filterTasksByProject('{{ project.title }}', this); if(window.switchTeamProject) window.switchTeamProject('{{ project._id }}', '{{ project.title }}');">
+                            <div class="project-list-info">
+                                <span class="project-list-name">{{ project.title }}</span>
+                                <span class="project-list-desc">{{ project.description or "No description" }}</span>
+                            </div>
+                            <svg class="project-list-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <polyline points="9 18 15 12 9 6"></polyline>
+                            </svg>
+                        </div>
+                        {% else %}
+                        <div class="inline-empty-state">You are not assigned to any projects yet.
+                        </div>
+                        {% endfor %}
+                    </div>
+                </section>
+
+                <section class="panel tasks-panel">
+                    <div class="panel-header">
+                        <h2 class="section-title">My Assigned Tasks</h2>
+                        <p class="section-description">Track and manage your current assignments</p>
+                    </div>
+
+                    <div class="table-wrapper">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Task</th>
+                                    <th>Project</th>
+                                    <th>Category</th>
+                                    <th>Framework</th>
+                                    <th>Description</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for task in tasks %}
+                                <tr class="table-row" data-task-id="{{ task._id }}" data-title="{{ task.title }}"
+                                    data-type="{{ task.type }}" data-description="{{ task.description }}"
+                                    data-status="{{ task.status }}" data-comments="{{ task.comments or '' }}"
+                                    data-project-title="{{ task.project.title if task.project else '' }}">
+                                    <td class="task-title-cell">{{ task.title }}</td>
+                                    <td><span class="project-name-cell">{{
+                                            task.project.title if task.project else "—" }}</span></td>
+                                    <td>
+                                        <span class="category-badge category-{{ task.type }}">
+                                            {{ task.type|capitalize }}
+                                        </span>
+                                    </td>
+                                    <td class="framework-cell">
+                                        {{ task.framework or "—" }}
+                                    </td>
+                                    <td class="description-cell">{{ task.description or "—" }}</td>
+                                    <td>
+                                        {% if task.status == "new" %}
+                                        <span class="status-indicator status-new">New</span>
+                                        {% elif task.status == "in_progress" %}
+                                        <span class="status-indicator status-progress">In Progress</span>
+                                        {% elif task.status == "submitted_for_review" %}
+                                        <span class="status-indicator status-submitted">Submitted for Review</span>
+                                        {% elif task.status == "paused" %}
+                                        <span class="status-indicator status-paused">Paused</span>
+                                        {% elif task.status == "done" %}
+                                        <span class="status-indicator status-done">Done</span>
+                                        {% else %}
+                                        <span class="status-indicator status-completed">Completed</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                                {% if not tasks %}
+                                <tr>
+                                    <td colspan="6" class="inline-empty-state">No tasks assigned yet.</td>
+                                </tr>
+                                {% endif %}
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Modal for task details -->
+    <div id="taskModal"
+        style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(30,41,59,0.25); z-index:999; align-items:center; justify-content:center;">
+        <div class="modal-content modal-large">
+            <button id="closeModalBtn" class="modal-close-btn">&times;</button>
+            <div class="modal-header">
+                <h3 id="modalTaskTitle" class="modal-title"></h3>
+            </div>
+            <div class="modal-body">
+                <div class="modal-section">
+                    <label class="modal-label">Task Title</label>
+                    <div id="modalTaskTitleDetail" class="modal-desc"></div>
+                </div>
+                <div class="modal-section">
+                    <label class="modal-label">Category</label>
+                    <div id="modalTaskTypeDetail" class="modal-desc"></div>
+                </div>
+                <div class="modal-section">
+                    <label class="modal-label">Description</label>
+                    <div id="modalTaskDesc" class="modal-desc"></div>
+                </div>
+                <div class="modal-section">
+                    <label class="modal-label">Status</label>
+                    <span id="modalTaskStatus" class="modal-status"></span>
+                </div>
+                <div id="commentsSection" class="modal-section" style="display:none;">
+                    <label class="modal-label" style="color: #ef4444;">Review Comments</label>
+                    <div id="modalTaskComments" class="modal-comments"
+                        style="background: rgba(239, 68, 68, 0.1); padding: 12px; border-radius: 6px; border-left: 3px solid #ef4444; color: #991b1b; white-space: pre-line; word-break: break-word; margin-top: 8px;">
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="startTaskBtn" class="modal-action-btn" style="display:none;">Start Task</button>
+                <button id="resumeTaskBtn" class="modal-action-btn resume-btn" style="display:none;">▶ Resume
+                    Task</button>
+                <button id="codeTaskBtn" class="modal-action-btn" style="display:none;">Open Code Editor</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Full Page Code Editor -->
+    <div id="codeEditorPage"
+        style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:var(--bg-base); z-index:1000;">
+        <div class="editor-header"
+            style="background: #f0f0f0; border-bottom: 1px solid #d1d1d1; padding: 10px 16px; display: flex; align-items: center; justify-content: space-between; width: 100%; box-sizing: border-box;">
+            <!-- Traffic Lights -->
+            <div style="display: flex; gap: 8px; min-width: 220px; align-items: center;">
+                <div onclick="closeFullPageEditor()"
+                    style="width: 12px; height: 12px; border-radius: 50%; background: #ff5f56; border: 1px solid #e0443e; cursor: pointer;"
+                    title="Close Editor">
+                </div>
+                <div
+                    style="width: 12px; height: 12px; border-radius: 50%; background: #ffbd2e; border: 1px solid #dea123;">
+                </div>
+                <div
+                    style="width: 12px; height: 12px; border-radius: 50%; background: #27c93f; border: 1px solid #1aab29;">
+                </div>
+                <button type="button" class="secondary-button editor-back-btn" onclick="closeFullPageEditor()">
+                    Back to Tasks
+                </button>
+            </div>
+            <!-- Title Area -->
+            <div class="editor-task-info"
+                style="flex-grow: 1; justify-content: center; display: flex; align-items: center; gap: 8px;">
+                <h3 id="editorTaskTitle" class="editor-title"
+                    style="color: #4A4A4A; font-size: 13px; font-weight: 600; margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+                </h3>
+                <span id="editorTaskType" class="editor-badge"
+                    style="background: rgba(0,0,0,0.05) !important; color: #666 !important; border: 1px solid rgba(0,0,0,0.1); padding: 2px 6px; font-size: 0.65rem; font-weight: 700; border-radius: 4px;"></span>
+            </div>
+            <!-- Actions Area -->
+            <div class="editor-actions"
+                style="width: 440px; justify-content: flex-end; display: flex; gap: 8px; align-items: center;">
+                <button id="aiAssistantBtn" class="editor-ai-btn" onclick="toggleAiPanel()"
+                    style="background: rgba(0,0,0,0.05); color: #333; border: 1px solid rgba(0,0,0,0.1); border-radius: 6px; padding: 4px 10px; font-size: 0.75rem; font-weight: 600; cursor: pointer; transition: all 0.2s;">🤖
+                    AI Assist</button>
+                <button id="historyBtn" class="editor-history-btn" onclick="toggleHistoryPanel()"
+                    style="background: rgba(0,0,0,0.05); color: #333; border: 1px solid rgba(0,0,0,0.1); border-radius: 6px; padding: 4px 10px; font-size: 0.75rem; font-weight: 600; cursor: pointer; transition: all 0.2s;">📜
+                    History</button>
+                <button id="runPythonBtn" class="editor-run-btn"
+                    style="display:none; background: #fff; color: #333; border: 1px solid rgba(0,0,0,0.1); border-radius: 6px; padding: 4px 10px; font-size: 0.75rem; font-weight: 600; cursor: pointer; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">▶
+                    Run</button>
+                <button id="saveProgressBtn" class="editor-save-btn" onclick="saveCodeProgress()"
+                    style="background: #fff; color: #333; border: 1px solid rgba(0,0,0,0.1); border-radius: 6px; padding: 4px 10px; font-size: 0.75rem; font-weight: 600; cursor: pointer; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">💾
+                    Save</button>
+                <button id="previewHtmlBtn" class="editor-preview-btn"
+                    style="display:none; background: #fff; color: #333; border: 1px solid rgba(0,0,0,0.1); border-radius: 6px; padding: 4px 10px; font-size: 0.75rem; font-weight: 600; cursor: pointer; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">👁
+                    Preview</button>
+                <button id="pauseTaskEditorBtn" class="editor-pause-btn"
+                    style="display:none; background: #fff; color: #333; border: 1px solid rgba(0,0,0,0.1); border-radius: 6px; padding: 4px 10px; font-size: 0.75rem; font-weight: 600; cursor: pointer;">⏸
+                    Pause</button>
+                <button id="submitCodeBtn" class="editor-submit-btn"
+                    style="background: #4f46e5; color: #fff; border: none; border-radius: 6px; padding: 5px 14px; font-size: 0.75rem; font-weight: 600; cursor: pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">Submit</button>
+                <button id="closeEditorBtn" class="editor-close-btn" style="display: none;">Close</button>
+            </div>
+        </div>
+        <div style="display: flex; height: calc(100vh - 80px);">
+            <div id="editorMainArea"
+                style="display: flex; flex-direction: column; flex: 1; min-width: 0; transition: flex 0.3s cubic-bezier(.4,0,.2,1);">
+                <div id="monacoContainer" style="flex: 1; min-height: 0; width: 100%;"></div>
+                <!-- Terminal Modal -->
+                <div id="terminalModal"
+                    style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.4); backdrop-filter: blur(4px); z-index: 3000; align-items: center; justify-content: center;">
+                    <div id="runOutputPanel" tabindex="0"
+                        style="width: 85%; max-width: 850px; height: 500px; background: var(--terminal-bg); border: 1px solid var(--terminal-border); border-radius: 12px; box-shadow: var(--terminal-shadow); display: flex; flex-direction: column; overflow: hidden; outline: none; position: relative; animation: terminalPopup 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);">
+                        <!-- Mac-style Window Header -->
+                        <div
+                            style="background: rgba(255,255,255,0.02); border-bottom: 1px solid var(--terminal-border); padding: 14px 18px; display: flex; align-items: center; justify-content: space-between; user-select: none;">
+                            <div style="display: flex; gap: 9px; width: 60px;">
+                                <div onclick="closeTerminal()"
+                                    style="width: 12px; height: 12px; border-radius: 50%; background: #ff5f56; border: 1px solid rgba(0,0,0,0.1); cursor: pointer; transition: transform 0.2s;"
+                                    onmouseover="this.style.transform='scale(1.1)'"
+                                    onmouseout="this.style.transform='scale(1)'"></div>
+                                <div
+                                    style="width: 12px; height: 12px; border-radius: 50%; background: #ffbd2e; border: 1px solid rgba(0,0,0,0.1);">
+                                </div>
+                                <div
+                                    style="width: 12px; height: 12px; border-radius: 50%; background: #27c93f; border: 1px solid rgba(0,0,0,0.1);">
+                                </div>
+                            </div>
+                            <div
+                                style="color: var(--terminal-muted); font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.15em; font-family: -apple-system, sans-serif;">
+                                Terminal Session
+                            </div>
+                            <div style="min-width: 140px; display: flex; justify-content: flex-end;">
+                                <button type="button" class="secondary-button terminal-back-btn" onclick="closeTerminal()">
+                                    Back to Editor
+                                </button>
+                            </div>
+                        </div>
+                        <!-- Terminal Content -->
+                        <div id="terminalContentArea"
+                            style="flex: 1; padding: 20px; overflow: auto; scrollbar-width: thin; scrollbar-color: var(--terminal-border) transparent;">
+                            <pre id="runOutputContent"
+                                style="margin: 0; white-space: pre-wrap; word-break: break-all; display: inline; color: var(--terminal-text); font-family: 'Menlo', 'Monaco', 'Courier New', monospace; font-size: 14px; line-height: 1.5;"></pre>
+                            <span id="terminalCursor"
+                                style="display: inline-block; width: 8px; height: 18px; background: var(--terminal-accent); vertical-align: middle; animation: blink 1s step-end infinite; box-shadow: 0 0 10px var(--terminal-accent); margin-left: 2px;"></span>
+                        </div>
+                    </div>
+                </div>
+                <div id="previewPanel"
+                    style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 2000; background: #fff; flex-direction: column;">
+                    <div class="mac-window-header"
+                        style="display: flex; justify-content: space-between; align-items: center; padding: 10px 16px; background: rgba(240, 240, 240, 0.7); backdrop-filter: blur(8px); border-bottom: 1px solid rgba(0,0,0,0.1); width: 100%; box-sizing: border-box; position: absolute; top: 0; left: 0; z-index: 10;">
+                        <div style="display: flex; gap: 8px; width: 140px; align-items: center;">
+                            <div onclick="closePreviewPanel()"
+                                style="width: 12px; height: 12px; border-radius: 50%; background: #ff5f56; border: 1px solid #e0443e; cursor: pointer;"
+                                title="Back to Editor">
+                            </div>
+                            <div
+                                style="width: 12px; height: 12px; border-radius: 50%; background: #ffbd2e; border: 1px solid #dea123;">
+                            </div>
+                            <div
+                                style="width: 12px; height: 12px; border-radius: 50%; background: #27c93f; border: 1px solid #1aab29;">
+                            </div>
+                        </div>
+                        <div
+                            style="flex-grow: 1; text-align: center; color: #4A4A4A; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 13px; font-weight: 600;">
+                            Live Preview
+                        </div>
+                        <div style="width: 140px; display: flex; justify-content: flex-end;">
+                            <button type="button" class="secondary-button terminal-back-btn" onclick="closePreviewPanel()"
+                                style="background: rgba(0,0,0,0.1); border: 1px solid rgba(0,0,0,0.1); border-radius: 4px; padding: 4px 8px; font-size: 11px; font-weight: 600; cursor: pointer; color: inherit; display: flex; align-items: center; gap: 4px; transition: all 0.2s;">
+                                Back to Editor
+                            </button>
+                        </div>
+                    </div>
+                    <iframe id="previewIframe"
+                        style="width: 100%; height: calc(100vh - 50px); border: none; background: #ffffff; margin-top: 50px;"></iframe>
+                </div>
+            </div>
+
+            <!-- AI Assistant Side Panel -->
+            <div id="aiAssistantPanel" class="ai-panel" style="display: none;">
+                <div class="ai-panel-header">
+                    <span class="ai-panel-title">🤖 AI Assistant</span>
+                    <button class="ai-panel-close" onclick="toggleAiPanel()">&times;</button>
+                </div>
+                <!-- AI messages and input should be here, but viewed segments suggest it's populated via JS or missing in snippet -->
+                <div id="aiMessages" class="ai-messages"></div>
+                <div class="ai-input-area">
+                    <textarea id="aiInput" class="ai-input" placeholder="Ask AI for help with your code..."
+                        rows="2"></textarea>
+                    <button id="aiSendBtn" class="ai-send-btn" onclick="sendAiMessage()">Send</button>
+                </div>
+            </div>
+
+            <!-- History Side Panel -->
+            <div id="historyPanel" class="history-panel" style="display: none;">
+                <div class="history-panel-header">
+                    <span class="history-panel-title">📜 Code History</span>
+                    <button class="history-panel-close" onclick="toggleHistoryPanel()">&times;</button>
+                </div>
+                <div id="historyList" class="history-list">
+                    <div style="padding: 20px; text-align: center; color: var(--text-muted);">
+                        Loading history...
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+    </div>
+
+    <style>
+        @keyframes blink {
+            50% {
+                opacity: 0;
+            }
+        }
+
+        /* Modal Styles */
+        .modal-content {
+            background: var(--bg-card);
+            border-radius: var(--radius-lg);
+            max-width: 600px;
+            width: 98%;
+            padding: 36px 36px 28px;
+            box-shadow: var(--shadow-card);
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            animation: modalFadeIn 0.2s;
+            border: 1px solid var(--border-subtle);
+        }
+
+        .modal-large {
+            max-width: 700px;
+            min-width: 340px;
+        }
+
+        @media (max-width: 800px) {
+            .modal-content.modal-large {
+                max-width: 98vw;
+                padding: var(--spacing-xl) var(--spacing-md);
+            }
+        }
+
+        @keyframes modalFadeIn {
+            from {
+                transform: translateY(40px) scale(0.98);
+                opacity: 0;
+            }
+
+            to {
+                transform: none;
+                opacity: 1;
+            }
+        }
+
+        .modal-close-btn {
+            position: absolute;
+            top: 18px;
+            right: 24px;
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            color: var(--text-muted);
+            cursor: pointer;
+            transition: color 0.2s;
+        }
+
+        .modal-close-btn:hover {
+            color: var(--text-primary);
+        }
+
+        .modal-header {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-lg);
+            margin-bottom: var(--spacing-md);
+        }
+
+        .modal-title {
+            font-size: 1.35rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin: 0;
+            flex: 1;
+            word-break: break-word;
+        }
+
+        .modal-body {
+            display: flex;
+            flex-direction: column;
+            gap: var(--spacing-lg);
+        }
+
+        .modal-section {
+            margin-bottom: var(--spacing-sm);
+        }
+
+        .modal-label {
+            font-size: 0.95rem;
+            color: var(--text-muted);
+            font-weight: 600;
+            margin-bottom: 4px;
+            display: block;
+            letter-spacing: 0.01em;
+        }
+
+        .modal-desc {
+            color: var(--text-secondary);
+            font-size: 1.05rem;
+            white-space: pre-line;
+            word-break: break-word;
+            padding-left: 2px;
+        }
+
+        .modal-status {
+            font-size: 1rem;
+            font-weight: 600;
+            padding: 4px 14px;
+            border-radius: var(--radius-sm);
+            background: var(--bg-input);
+            color: var(--text-secondary);
+            text-transform: capitalize;
+        }
+
+        .modal-status.status-new {
+            background: rgba(16, 185, 129, 0.1);
+            color: var(--success-500);
+        }
+
+        .modal-status.status-progress {
+            background: rgba(245, 158, 11, 0.1);
+            color: var(--warning-500);
+        }
+
+        .modal-status.status-completed {
+            background: rgba(34, 197, 94, 0.1);
+            color: var(--success-500);
+        }
+
+        .modal-status.status-submitted {
+            background: rgba(59, 130, 246, 0.1);
+            color: #3b82f6;
+        }
+
+        .modal-status.status-done {
+            background: rgba(16, 185, 129, 0.1);
+            color: #10b981;
+        }
+
+        .status-indicator.status-submitted {
+            background: rgba(59, 130, 246, 0.1);
+            color: #3b82f6;
+        }
+
+        .status-indicator.status-done {
+            background: rgba(16, 185, 129, 0.1);
+            color: #10b981;
+        }
+
+        .status-indicator.status-paused {
+            background: rgba(107, 114, 128, 0.1);
+            color: #6b7280;
+        }
+
+        .modal-status.status-paused {
+            background: rgba(107, 114, 128, 0.1);
+            color: #6b7280;
+        }
+
+        .pause-btn {
+            background: linear-gradient(135deg, #f59e0b, #d97706) !important;
+        }
+
+        .pause-btn:hover {
+            box-shadow: var(--shadow-lg);
+            transform: translateY(-2px) scale(1.03);
+        }
+
+        .resume-btn {
+            background: linear-gradient(135deg, #10b981, #059669) !important;
+        }
+
+        .resume-btn:hover {
+            box-shadow: var(--shadow-lg);
+            transform: translateY(-2px) scale(1.03);
+        }
+
+        .modal-footer {
+            display: flex;
+            justify-content: flex-end;
+            margin-top: var(--spacing-md);
+        }
+
+        .modal-action-btn {
+            background: linear-gradient(135deg, var(--accent-1), var(--accent-2));
+            color: #fff;
+            border: none;
+            border-radius: var(--radius-sm);
+            padding: 12px 28px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: box-shadow 0.2s, transform 0.15s;
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+        }
+
+        .modal-action-btn:hover {
+            box-shadow: var(--shadow-lg);
+            transform: translateY(-2px) scale(1.03);
+        }
+
+        /* Full Page Editor Styles */
+        .editor-header {
+            background: var(--bg-elevated);
+            border-bottom: 1px solid var(--border-subtle);
+            padding: 18px 28px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+        }
+
+        .editor-header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .editor-task-info {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-lg);
+        }
+
+        .editor-title {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin: 0;
+        }
+
+        .editor-badge {
+            padding: 4px 14px;
+            border-radius: var(--radius-sm);
+            font-size: 0.85rem;
+            font-weight: 600;
+            background: var(--bg-input);
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+        }
+
+        .editor-badge.category-frontend {
+            background: rgba(139, 92, 246, 0.15);
+            color: #a78bfa;
+        }
+
+        .editor-badge.category-backend {
+            background: rgba(16, 185, 129, 0.12);
+            color: #34d399;
+        }
+
+        .editor-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .editor-submit-btn {
+            background: linear-gradient(135deg, var(--success), #059669);
+            color: #fff;
+            border: none;
+            border-radius: var(--radius-sm);
+            padding: 7px 14px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+        }
+
+        .editor-submit-btn:hover {
+            box-shadow: var(--shadow-lg);
+            transform: translateY(-1px);
+        }
+
+        .editor-close-btn {
+            background: var(--bg-input);
+            color: var(--text-secondary);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-sm);
+            padding: 7px 14px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .editor-close-btn:hover {
+            background: var(--primary-500);
+            transform: translateY(-1px);
+        }
+
+        .editor-pause-btn {
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+            color: #fff;
+            border: none;
+            border-radius: var(--radius-sm);
+            padding: 7px 14px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .editor-pause-btn:hover {
+            box-shadow: var(--shadow-lg);
+            transform: translateY(-1px);
+        }
+
+        .editor-run-btn {
+            background: linear-gradient(135deg, #059669, #047857);
+            color: #fff;
+            border: none;
+            border-radius: var(--radius-sm);
+            padding: 7px 14px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .editor-run-btn:hover {
+            box-shadow: var(--shadow-lg);
+            transform: translateY(-1px);
+        }
+
+        .editor-preview-btn {
+            background: linear-gradient(135deg, #8b5cf6, #7c3aed);
+            color: #fff;
+            border: none;
+            border-radius: var(--radius-sm);
+            padding: 7px 14px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .editor-preview-btn:hover {
+            box-shadow: var(--shadow-lg);
+            transform: translateY(-1px);
+        }
+
+        /* Project List Styles */
+        .project-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0;
+        }
+
+        .project-list-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 14px 18px;
+            border-left: 3px solid transparent;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+            cursor: pointer;
+            transition: background 0.15s, border-color 0.15s;
+        }
+
+        .project-list-item:last-child {
+            border-bottom: none;
+        }
+
+        .project-list-item:hover {
+            background: rgba(255, 255, 255, 0.03);
+            border-left-color: var(--accent-1);
+        }
+
+        .project-list-item.active {
+            background: rgba(14, 165, 233, 0.08);
+            border-left-color: var(--accent-1);
+            border-left-width: 3px;
+        }
+
+        .project-list-item.active .project-list-name {
+            color: var(--accent-1);
+        }
+
+        .project-list-item.active .project-list-arrow {
+            opacity: 1;
+            color: var(--accent-1);
+        }
+
+        .project-list-info {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            min-width: 0;
+        }
+
+        .project-list-name {
+            font-weight: 600;
+            font-size: 0.95rem;
+            color: var(--text-primary);
+            white-space: nowrap;
+        }
+
+        .project-list-desc {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .project-list-arrow {
+            color: var(--text-muted);
+            opacity: 0;
+            transition: opacity 0.15s, transform 0.15s;
+            flex-shrink: 0;
+        }
+
+        .project-list-item:hover .project-list-arrow {
+            opacity: 1;
+            transform: translateX(2px);
+        }
+
+        /* AI Assistant Button */
+        .editor-ai-btn {
+            background: linear-gradient(135deg, #6366f1, #4f46e5);
+            color: #fff;
+            border: none;
+            border-radius: var(--radius-sm);
+            padding: 7px 14px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .editor-ai-btn:hover {
+            box-shadow: 0 0 12px rgba(99, 102, 241, 0.5);
+            transform: translateY(-1px);
+        }
+
+        .editor-ai-btn.active {
+            background: linear-gradient(135deg, #4f46e5, #4338ca);
+            box-shadow: 0 0 12px rgba(99, 102, 241, 0.4);
+        }
+
+        /* AI Side Panel */
+        .ai-panel {
+            width: 400px;
+            min-width: 400px;
+            background: #1e1e2e;
+            border-left: 1px solid rgba(255, 255, 255, 0.08);
+            display: flex;
+            flex-direction: column;
+            animation: aiSlideIn 0.3s cubic-bezier(.4, 0, .2, 1);
+        }
+
+        @keyframes aiSlideIn {
+            from {
+                width: 0;
+                min-width: 0;
+                opacity: 0;
+            }
+
+            to {
+                width: 400px;
+                min-width: 400px;
+                opacity: 1;
+            }
+        }
+
+        .ai-panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 16px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        .ai-panel-title {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .ai-panel-close {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            font-size: 1.3rem;
+            cursor: pointer;
+            padding: 0 4px;
+            line-height: 1;
+        }
+
+        .ai-panel-close:hover {
+            color: var(--text-primary);
+        }
+
+        .ai-messages {
+            flex: 1;
+            overflow-y: auto;
+            overflow-x: hidden;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+            scrollbar-width: thin;
+            scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
+        }
+
+        .ai-messages::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .ai-messages::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .ai-messages::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 3px;
+        }
+
+        .ai-messages::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .ai-msg {
+            max-width: 95%;
+            padding: 12px 16px;
+            border-radius: 12px;
+            font-size: 0.85rem;
+            line-height: 1.5;
+            word-break: break-word;
+            animation: msgSlideIn 0.3s ease-out;
+        }
+
+        @keyframes msgSlideIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .ai-msg-user {
+            align-self: flex-end;
+            background: linear-gradient(135deg, #4f46e5, #6366f1);
+            color: #fff;
+            border-bottom-right-radius: 4px;
+            box-shadow: 0 2px 8px rgba(99, 102, 241, 0.2);
+        }
+
+        .ai-msg-assistant {
+            align-self: flex-start;
+            background: #2a2a3e;
+            color: #e0e0e0;
+            border-bottom-left-radius: 4px;
+            border-left: 3px solid #6366f1;
+            padding-left: 13px;
+        }
+
+        /* History Panel Styles */
+        .history-panel {
+            width: 350px;
+            min-width: 350px;
+            background: #1e1e2e;
+            border-left: 1px solid rgba(255, 255, 255, 0.08);
+            display: flex;
+            flex-direction: column;
+            animation: historySlideIn 0.3s cubic-bezier(.4, 0, .2, 1);
+        }
+
+        @keyframes historySlideIn {
+            from {
+                width: 0;
+                min-width: 0;
+                opacity: 0;
+            }
+
+            to {
+                width: 350px;
+                min-width: 350px;
+                opacity: 1;
+            }
+        }
+
+        .history-panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 16px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        .history-panel-title {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .history-panel-close {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            font-size: 1.3rem;
+            cursor: pointer;
+            padding: 0 4px;
+            line-height: 1;
+        }
+
+        .history-panel-close:hover {
+            color: var(--text-primary);
+        }
+
+        .history-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .history-item {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+            padding: 12px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .history-item:hover {
+            background: rgba(255, 255, 255, 0.08);
+            border-color: var(--accent-1);
+            transform: translateY(-1px);
+        }
+
+        .history-item-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 4px;
+        }
+
+        .history-item-time {
+            font-size: 0.8rem;
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+
+        .history-item-user {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.02em;
+        }
+
+        .history-item-preview {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            font-family: 'Menlo', 'Monaco', monospace;
+            background: rgba(0, 0, 0, 0.2);
+            padding: 4px 6px;
+            border-radius: 4px;
+            margin-top: 4px;
+        }
+
+        .editor-history-btn {
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+            color: #fff;
+            border: none;
+            border-radius: var(--radius-sm);
+            padding: 7px 14px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .editor-history-btn:hover {
+            box-shadow: 0 0 12px rgba(245, 158, 11, 0.5);
+            transform: translateY(-1px);
+        }
+
+        .editor-history-btn.active {
+            background: linear-gradient(135deg, #d97706, #b45309);
+            box-shadow: 0 0 12px rgba(245, 158, 11, 0.4);
+        }
+
+        .ai-msg-assistant pre {
+            background: #1a1a2e;
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: 8px;
+            padding: 10px 12px;
+            overflow-x: auto;
+            margin: 8px 0;
+            font-size: 0.82rem;
+            position: relative;
+        }
+
+        .ai-msg-assistant code {
+            font-family: 'Cascadia Code', 'Fira Code', monospace;
+            font-size: 0.82rem;
+        }
+
+        .ai-msg-assistant p {
+            margin: 4px 0;
+        }
+
+        .ai-msg-assistant ul,
+        .ai-msg-assistant ol {
+            padding-left: 18px;
+            margin: 4px 0;
+        }
+
+        .ai-apply-btn {
+            display: inline-block;
+            margin-top: 6px;
+            padding: 6px 12px;
+            background: rgba(99, 102, 241, 0.2);
+            color: #a5b4fc;
+            border: 1px solid rgba(99, 102, 241, 0.4);
+            border-radius: 6px;
+            font-size: 0.75rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            white-space: nowrap;
+        }
+
+        .ai-apply-btn:hover {
+            background: rgba(99, 102, 241, 0.35);
+            color: #fff;
+            border-color: rgba(99, 102, 241, 0.6);
+            box-shadow: 0 0 8px rgba(99, 102, 241, 0.3);
+        }
+
+        .ai-apply-btn:active {
+            transform: scale(0.98);
+        }
+
+        .ai-msg-typing {
+            align-self: flex-start;
+            background: #2a2a3e;
+            color: #aaa;
+            border-radius: 12px;
+            padding: 10px 14px;
+            font-size: 0.85rem;
+            font-style: italic;
+        }
+
+        .ai-input-area {
+            display: flex;
+            gap: 12px;
+            padding: 18px 16px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            background: rgba(0, 0, 0, 0.3);
+            align-items: flex-end;
+        }
+
+        .ai-input {
+            flex: 1;
+            background: #2a2a3e;
+            border: 1px solid rgba(99, 102, 241, 0.3);
+            border-radius: 10px;
+            color: var(--text-primary);
+            padding: 12px 16px;
+            font-size: 0.85rem;
+            resize: none;
+            outline: none;
+            font-family: inherit;
+            max-height: 120px;
+            min-height: 44px;
+            transition: all 0.2s;
+            line-height: 1.4;
+        }
+
+        .ai-input:focus {
+            border-color: rgba(99, 102, 241, 0.8);
+            background: #323245;
+            box-shadow: 0 0 12px rgba(99, 102, 241, 0.2);
+        }
+
+        .ai-input::placeholder {
+            color: rgba(224, 224, 224, 0.4);
+        }
+
+        .ai-send-btn {
+            background: linear-gradient(135deg, #6366f1, #4f46e5);
+            color: #fff;
+            border: none;
+            border-radius: 10px;
+            padding: 12px 26px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            cursor: pointer;
+            align-self: flex-end;
+            transition: all 0.2s;
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+            white-space: nowrap;
+        }
+
+        .ai-send-btn:hover {
+            box-shadow: 0 6px 16px rgba(99, 102, 241, 0.5);
+            transform: translateY(-2px);
+        }
+
+        .ai-send-btn:active {
+            transform: translateY(0);
+        }
+
+        /* Dark Mode Overrides for Mac Window */
+        [data-theme="dark"] #runOutputPanel {
+            background: var(--terminal-bg) !important;
+            border-top-color: var(--terminal-border) !important;
+        }
+
+        [data-theme="dark"] #runOutputPanel div {
+            color: var(--terminal-accent) !important;
+            border-bottom-color: var(--terminal-border) !important;
+        }
+
+        [data-theme="dark"] #runOutputContent {
+            color: var(--terminal-text) !important;
+        }
+
+        [data-theme="dark"] #terminalCursor {
+            background: var(--terminal-accent) !important;
+        }
+
+        [data-theme="dark"] #codeEditorPage {
+            background: #1e1e1e !important;
+        }
+
+        [data-theme="dark"] .editor-header {
+            background: #2d2d2d !important;
+            border-bottom-color: #444 !important;
+        }
+
+        [data-theme="dark"] #editorTaskTitle {
+            color: #e0e0e0 !important;
+        }
+
+        [data-theme="dark"] #editorTaskType {
+            background: rgba(255, 255, 255, 0.1) !important;
+            color: #aaa !important;
+            border-color: rgba(255, 255, 255, 0.2) !important;
+        }
+
+        [data-theme="dark"] .editor-actions button:not(.editor-submit-btn):not(.active) {
+            background: rgba(255, 255, 255, 0.1) !important;
+            color: #e0e0e0 !important;
+            border-color: rgba(255, 255, 255, 0.2) !important;
+        }
+
+        [data-theme="dark"] .editor-actions button.active:not(.editor-submit-btn) {
+            background: rgba(99, 102, 241, 0.2) !important;
+            color: #fff !important;
+            border-color: rgba(99, 102, 241, 0.4) !important;
+        }
+
+        [data-theme="dark"] .ai-panel {
+            background: #1e1e1e !important;
+            border-left-color: #444 !important;
+        }
+
+        [data-theme="dark"] .ai-panel-header {
+            background: #2d2d2d !important;
+            border-bottom-color: #444 !important;
+        }
+
+        [data-theme="dark"] .ai-msg-typing {
+            background: #2d2d2d !important;
+        }
+
+        [data-theme="dark"] .ai-input {
+            background: #2d2d2d !important;
+            border-color: #444 !important;
+            color: #e0e0e0 !important;
+        }
+
+        [data-theme="dark"] .mac-window-header {
+            background: #2d2d2d !important;
+            border-bottom-color: #444 !important;
+        }
+
+        [data-theme="dark"] .mac-window-header div {
+            color: #e0e0e0 !important;
+        }
+
+        @keyframes terminalPopup {
+            from {
+                opacity: 0;
+                transform: scale(0.9) translateY(20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: scale(1) translateY(0);
+            }
+        }
+    </style>
+
+    <script>
+        const showUiNotice = (message, type = 'info', persist = false) => {
+            if (persist) {
+                window.queueAppNotice(message, { type: type });
+                return;
+            }
+
+            window.appNotice(message, { type: type });
+        };
+
+        let monacoEditor = null;
+        let currentTaskId = null;
+        let currentTaskType = null;
+        let developerWebSocket = null;
+        let aiPanelOpen = false;
+        let aiEditorMessages = [];
+
+        // Assign submit button handler immediately to avoid race conditions
+        document.addEventListener('DOMContentLoaded', () => {
+            const submitBtn = document.getElementById('submitCodeBtn');
+            if (submitBtn) {
+                submitBtn.onclick = async function () {
+                    console.log("Submit button clicked!");
+                    if (!monacoEditor) {
+                        showUiNotice('Editor not initialized.', 'error');
+                        return;
+                    }
+                    if (!currentTaskId) {
+                        showUiNotice('No active task selected.', 'error');
+                        return;
+                    }
+
+                    const code = monacoEditor.getValue();
+                    const btn = this;
+                    const originalText = btn.textContent;
+                    btn.textContent = 'Submitting...';
+                    btn.disabled = true;
+
+                    try {
+                        const res = await fetch('/submit_code', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ task_id: currentTaskId, code: code })
+                        });
+
+                        if (res.ok) {
+                            showUiNotice('Code submitted successfully!', 'success', true);
+                            await closeFullPageEditor(true);
+                            window.location.reload();
+                        } else {
+                            const data = await res.json();
+                            showUiNotice(data.detail || 'Failed to submit', 'error');
+                            btn.textContent = originalText;
+                            btn.disabled = false;
+                        }
+                    } catch (e) {
+                        showUiNotice('Error submitting code: ' + e.message, 'error');
+                        btn.textContent = originalText;
+                        btn.disabled = false;
+                    }
+                };
+                console.log("Submit button handler attached");
+            } else {
+                console.error("Submit button element not found!");
+            }
+        });
+
+        function showFullPageEditor(taskId, taskTitle, taskType, initialCode = '', isReadOnly = false, taskStatus = '') {
+            // ... (keep the rest of the functions)
+            currentTaskId = taskId;
+            currentTaskType = taskType;
+            document.getElementById('editorTaskTitle').textContent = taskTitle;
+            const badge = document.getElementById('editorTaskType');
+            badge.textContent = taskType.charAt(0).toUpperCase() + taskType.slice(1);
+            badge.className = 'editor-badge category-' + taskType;
+
+            // Hide submit button if viewing in read-only mode
+            document.getElementById('submitCodeBtn').style.display = isReadOnly ? 'none' : 'block';
+
+            // Show Run button only for backend (Python) tasks
+            const runBtn = document.getElementById('runPythonBtn');
+            // Show Preview button only for frontend (HTML) tasks
+            const previewBtn = document.getElementById('previewHtmlBtn');
+            previewBtn.style.display = (taskType === 'frontend' && !isReadOnly) ? 'inline-block' : 'none';
+            runBtn.style.display = (taskType === 'backend' && !isReadOnly) ? 'inline-block' : 'none';
+
+            // Show pause button only if task is in_progress
+            const pauseBtn = document.getElementById('pauseTaskEditorBtn');
+            if (taskStatus === 'in_progress' && !isReadOnly) {
+                pauseBtn.style.display = 'inline-block';
+            } else {
+                pauseBtn.style.display = 'none';
+            }
+
+            // Hide run output and preview panels when opening editor
+            if (document.getElementById('terminalModal')) {
+                document.getElementById('terminalModal').style.display = 'none';
+            }
+            document.getElementById('previewPanel').style.display = 'none';
+
+            document.getElementById('codeEditorPage').style.display = 'block';
+            document.body.style.overflow = 'hidden';
+
+            // Hide the group chat toggle button while the editor is open
+            const chatToggle = document.getElementById('chatToggleBtn');
+            if (chatToggle) {
+                chatToggle.style.display = 'none';
+            }
+
+            require.config({ paths: { 'vs': 'https://cdn.jsdelivr.net/npm/monaco-editor@0.45.0/min/vs' } });
+            require(['vs/editor/editor.main'], function () {
+                if (monacoEditor) monacoEditor.dispose();
+                const currentTheme = document.documentElement.getAttribute('data-theme') || 'dark';
+                monacoEditor = monaco.editor.create(document.getElementById('monacoContainer'), {
+                    value: initialCode,
+                    language: taskType === 'frontend' ? 'html' : 'python',
+                    theme: currentTheme === 'dark' ? 'vs-dark' : 'vs',
+                    readOnly: isReadOnly,
+                    automaticLayout: true,
+                    fontSize: 14,
+                    lineNumbers: 'on',
+                    wordWrap: 'on',
+                    minimap: { enabled: false }
+                });
+
+                // Connect WebSocket for live code viewing if task is in_progress and not read-only
+                if (taskStatus === 'in_progress' && !isReadOnly && currentTaskId) {
+                    connectDeveloperWebSocket(currentTaskId);
+
+                    // Send code updates when developer types (throttled)
+                    let updateTimeout = null;
+                    monacoEditor.onDidChangeModelContent(function () {
+                        if (developerWebSocket && developerWebSocket.readyState === WebSocket.OPEN) {
+                            // Throttle updates to avoid too many messages
+                            clearTimeout(updateTimeout);
+                            updateTimeout = setTimeout(function () {
+                                const code = monacoEditor.getValue();
+                                developerWebSocket.send(JSON.stringify({
+                                    type: 'code_update',
+                                    code: code
+                                }));
+                            }, 300); // Update every 300ms max
+                        }
+                    });
+                }
+            });
+        }
+
+        function connectDeveloperWebSocket(taskId) {
+            // Close existing connection if any
+            if (developerWebSocket) {
+                developerWebSocket.close();
+            }
+
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsUrl = `${protocol}//${window.location.host}/ws/developer/${taskId}`;
+
+            developerWebSocket = new WebSocket(wsUrl);
+
+            developerWebSocket.onopen = function () {
+                console.log('Developer WebSocket connected for live code viewing');
+            };
+
+            developerWebSocket.onerror = function (error) {
+                console.error('Developer WebSocket error:', error);
+            };
+
+            developerWebSocket.onclose = function () {
+                console.log('Developer WebSocket disconnected');
+            };
+        }
+
+        async function closeFullPageEditor(skipSave = false) {
+            // Auto-save progress if in_progress
+            if (!skipSave && currentTaskId && monacoEditor) {
+                const code = monacoEditor.getValue();
+                // We use the pause endpoint as it's a "silent" save to 'paused' status
+                try {
+                    await fetch(`/api/save_task/${currentTaskId}`, {
+                        method: "POST",
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ code: code, task_id: currentTaskId })
+                    });
+                    console.log("Progress auto-saved on editor close.");
+                } catch (e) {
+                    console.error("Auto-save failed:", e);
+                }
+            }
+
+            document.getElementById('codeEditorPage').style.display = 'none';
+            document.getElementById('previewPanel').style.display = 'none';
+            if (document.getElementById('terminalModal')) {
+                document.getElementById('terminalModal').style.display = 'none';
+            }
+            document.body.style.overflow = 'auto';
+
+            // Show the group chat toggle button again when the editor is closed
+            const chatToggle = document.getElementById('chatToggleBtn');
+            if (chatToggle) {
+                chatToggle.style.display = 'flex';
+            }
+
+            // Close AI panel
+            if (aiPanelOpen) {
+                aiPanelOpen = false;
+                document.getElementById('aiAssistantPanel').style.display = 'none';
+                document.getElementById('aiAssistantBtn').classList.remove('active');
+            }
+
+            // Close WebSocket connection
+            if (developerWebSocket) {
+                developerWebSocket.close();
+                developerWebSocket = null;
+            }
+
+            if (monacoEditor) {
+                monacoEditor.dispose();
+                monacoEditor = null;
+            }
+        }
+
+        async function saveCodeProgress() {
+            if (!currentTaskId || !monacoEditor) return;
+
+            const saveBtn = document.getElementById('saveProgressBtn');
+            const originalContent = saveBtn.innerHTML;
+            saveBtn.innerHTML = 'Saving...';
+            saveBtn.disabled = true;
+
+            const code = monacoEditor.getValue();
+
+            try {
+                const res = await fetch(`/api/save_task/${currentTaskId}`, {
+                    method: "POST",
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ code: code, task_id: currentTaskId })
+                });
+
+                if (res.ok) {
+                    saveBtn.innerHTML = '✅ Saved!';
+                    setTimeout(() => {
+                        saveBtn.innerHTML = originalContent;
+                        saveBtn.disabled = false;
+                    }, 2000);
+                } else {
+                    const data = await res.json();
+                    showUiNotice(data.detail || 'Failed to save', 'error');
+                    saveBtn.innerHTML = originalContent;
+                    saveBtn.disabled = false;
+                }
+            } catch (e) {
+                console.error(e);
+                showUiNotice('Error saving code', 'error');
+                saveBtn.innerHTML = originalContent;
+                saveBtn.disabled = false;
+            }
+        }
+
+        document.querySelectorAll('.table-row[data-task-id]').forEach(row => {
+            row.addEventListener('click', function () {
+                const title = this.dataset.title;
+                const type = this.dataset.type;
+                const desc = this.dataset.description;
+                const status = this.dataset.status;
+                const taskId = this.dataset.taskId;
+
+                currentTaskId = taskId;
+
+                document.getElementById('modalTaskTitle').textContent = title;
+                document.getElementById('modalTaskTitleDetail').textContent = title;
+                document.getElementById('modalTaskTypeDetail').textContent = type.charAt(0).toUpperCase() + type.slice(1);
+                document.getElementById('modalTaskDesc').textContent = desc;
+                const statusSpan = document.getElementById('modalTaskStatus');
+                let statusText = status.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase());
+                if (status === "submitted_for_review") {
+                    statusText = "Submitted for Review";
+                    statusSpan.className = 'modal-status status-submitted';
+                } else if (status === "paused") {
+                    statusText = "Paused";
+                    statusSpan.className = 'modal-status status-paused';
+                } else if (status === "done") {
+                    statusText = "Done";
+                    statusSpan.className = 'modal-status status-done';
+                } else {
+                    statusSpan.className = 'modal-status status-' + (status === "in_progress" ? "progress" : status);
+                }
+                statusSpan.textContent = statusText;
+
+                const codeBtn = document.getElementById('codeTaskBtn');
+                const startBtn = document.getElementById('startTaskBtn');
+                const resumeBtn = document.getElementById('resumeTaskBtn');
+
+                // Reset buttons and comments
+                codeBtn.style.display = 'none';
+                startBtn.style.display = 'none';
+                resumeBtn.style.display = 'none';
+                codeBtn.textContent = "Open Code Editor";
+                document.getElementById('commentsSection').style.display = 'none';
+
+                if (status === "new") {
+                    startBtn.style.display = "inline-block";
+                    startBtn.onclick = async function () {
+                        await fetch(`/api/start_task/${taskId}`, { method: "POST" });
+                        statusSpan.textContent = "In Progress";
+                        statusSpan.className = 'modal-status status-progress';
+                        startBtn.style.display = "none";
+                        codeBtn.style.display = "inline-block";
+                        // Update row status visually without reload
+                        row.querySelector('.status-indicator').className = 'status-indicator status-progress';
+                        row.querySelector('.status-indicator').textContent = 'In Progress';
+                        row.dataset.status = 'in_progress';
+                    };
+                } else if (status === "in_progress") {
+                    codeBtn.style.display = "inline-block";
+                    // Show comments if task has been reassigned
+                    const comments = this.dataset.comments || '';
+                    if (comments.trim()) {
+                        document.getElementById('commentsSection').style.display = 'block';
+                        document.getElementById('modalTaskComments').textContent = comments;
+                    } else {
+                        document.getElementById('commentsSection').style.display = 'none';
+                    }
+                } else if (status === "paused") {
+                    // Only show resume button for paused tasks, not the code editor button
+                    resumeBtn.style.display = "inline-block";
+                    codeBtn.style.display = "none";
+                    // Show comments if task has been reassigned
+                    const comments = this.dataset.comments || '';
+                    if (comments.trim()) {
+                        document.getElementById('commentsSection').style.display = 'block';
+                        document.getElementById('modalTaskComments').textContent = comments;
+                    } else {
+                        document.getElementById('commentsSection').style.display = 'none';
+                    }
+
+                    resumeBtn.onclick = async function () {
+                        try {
+                            const res = await fetch(`/api/resume_task/${taskId}`, { method: "POST" });
+                            const data = await res.json();
+                            if (res.ok) {
+                                statusSpan.textContent = "In Progress";
+                                statusSpan.className = 'modal-status status-progress';
+                                resumeBtn.style.display = "none";
+                                codeBtn.style.display = "inline-block";
+                                // Update row status visually
+                                row.querySelector('.status-indicator').className = 'status-indicator status-progress';
+                                row.querySelector('.status-indicator').textContent = 'In Progress';
+                                row.dataset.status = 'in_progress';
+                            } else {
+                                showUiNotice(data.detail || 'Failed to resume task', 'error');
+                            }
+                        } catch (e) {
+                            console.error(e);
+                            showUiNotice('Error resuming task', 'error');
+                        }
+                    };
+                } else if (status === "submitted_for_review") {
+                    codeBtn.textContent = "View Submitted Code";
+                    codeBtn.style.display = "inline-block";
+                    document.getElementById('commentsSection').style.display = 'none';
+                } else if (status === "completed") {
+                    codeBtn.textContent = "View Submitted Code";
+                    codeBtn.style.display = "inline-block";
+                    document.getElementById('commentsSection').style.display = 'none';
+                } else if (status === "done") {
+                    codeBtn.textContent = "View Code";
+                    codeBtn.style.display = "inline-block";
+                    document.getElementById('commentsSection').style.display = 'none';
+                }
+
+                if (status === "done" && !document.getElementById('modalGithubLink')) {
+                    const githubBtn = document.createElement('button');
+                    githubBtn.id = 'modalGithubLink';
+                    githubBtn.className = 'modal-action-btn';
+                    githubBtn.style.background = 'var(--success-500)';
+                    githubBtn.textContent = 'View on GitHub';
+                    githubBtn.onclick = () => openTaskGitHubUrl(taskId);
+                    document.querySelector('.modal-footer').appendChild(githubBtn);
+                } else if (status !== "done" && document.getElementById('modalGithubLink')) {
+                    document.getElementById('modalGithubLink').remove();
+                }
+
+                document.getElementById('taskModal').style.display = "flex";
+            });
+        });
+
+        function filterTasksByProject(projectTitle, clickedEl) {
+            const rows = document.querySelectorAll('.data-table tbody tr[data-project-title]');
+            // Remove active from all project items
+            document.querySelectorAll('.project-list-item').forEach(el => el.classList.remove('active'));
+
+            // If clicking the same project again, deselect (show all)
+            if (clickedEl && clickedEl.classList.contains('was-active')) {
+                document.querySelectorAll('.project-list-item').forEach(el => el.classList.remove('was-active'));
+                resetProjectFilter();
+                return;
+            }
+            document.querySelectorAll('.project-list-item').forEach(el => el.classList.remove('was-active'));
+
+            if (clickedEl) {
+                clickedEl.classList.add('active');
+                clickedEl.classList.add('was-active');
+            }
+
+            rows.forEach(row => {
+                if (!projectTitle || projectTitle === 'all' || row.dataset.projectTitle === projectTitle) {
+                    row.style.display = '';
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+        }
+
+        function resetProjectFilter() {
+            const rows = document.querySelectorAll('.data-table tbody tr[data-project-title]');
+            document.querySelectorAll('.project-list-item').forEach(el => {
+                el.classList.remove('active');
+                el.classList.remove('was-active');
+            });
+            const allProjectsItem = document.getElementById('allProjectsItem');
+            if (allProjectsItem) {
+                allProjectsItem.classList.add('active');
+            }
+            rows.forEach(row => {
+                row.style.display = '';
+            });
+        }
+
+        async function openTaskGitHubUrl(taskId) {
+            try {
+                const response = await fetch(`/api/task_github_url/${taskId}`);
+                const data = await response.json().catch(() => ({}));
+                if (!response.ok) {
+                    showUiNotice(data.detail || 'Code not available on GitHub', 'error');
+                    return;
+                }
+                if (data.url) window.open(data.url, '_blank', 'noopener');
+            } catch (e) {
+                console.error(e);
+                showUiNotice('Error opening GitHub link', 'error');
+            }
+        }
+
+        document.getElementById('codeTaskBtn').onclick = function () {
+            const title = document.getElementById('modalTaskTitle').textContent;
+            const type = document.getElementById('modalTaskTypeDetail').textContent.toLowerCase();
+            const statusText = document.getElementById('modalTaskStatus').textContent.toLowerCase();
+            const isCompleted = statusText.includes('completed') || statusText.includes('submitted') || statusText.includes('done');
+
+            // Get actual status from the clicked row
+            const row = document.querySelector(`tr[data-task-id="${currentTaskId}"]`);
+            const taskStatus = row ? row.dataset.status : '';
+
+            document.getElementById('taskModal').style.display = "none";
+
+            // Fetch existing code if any
+            fetch(`/get_task_code/${currentTaskId}`)
+                .then(res => res.json())
+                .then(data => showFullPageEditor(currentTaskId, title, type, data.code || '', isCompleted, taskStatus))
+                .catch(() => showFullPageEditor(currentTaskId, title, type, '', isCompleted, taskStatus));
+        };
+
+        let pythonRunWS = null;
+
+        document.getElementById('runPythonBtn').onclick = function () {
+            if (!monacoEditor || currentTaskType !== 'backend') return;
+
+            if (pythonRunWS) {
+                pythonRunWS.close();
+                pythonRunWS = null;
+            }
+
+            const code = monacoEditor.getValue();
+            const panel = document.getElementById('runOutputPanel');
+            const modal = document.getElementById('terminalModal');
+            const content = document.getElementById('runOutputContent');
+
+            content.textContent = 'Connecting to interactive session...\n';
+            modal.style.display = 'flex';
+            panel.focus();
+
+            // Build WebSocket URL
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsUrl = `${protocol}//${window.location.host}/api/run_python_ws`;
+
+            pythonRunWS = new WebSocket(wsUrl);
+
+            pythonRunWS.onopen = () => {
+                content.textContent = ''; // Clear "Connecting..." message
+                pythonRunWS.send(JSON.stringify({ code: code }));
+            };
+
+            let lineBuffer = '';
+
+            pythonRunWS.onmessage = (event) => {
+                const msg = JSON.parse(event.data);
+                if (msg.type === 'output') {
+                    // Just append the data directly; backspaces or control characters 
+                    // will be rendered by the textContent or handled basic way.
+                    // Doing a per-char loop with backspace slicing is slow and buggy 
+                    // if chunks contain raw backspaces without proper parsing logic.
+                    // Instead, use simple text append for standard output streams.
+                    content.textContent += msg.data;
+                    panel.scrollTop = panel.scrollHeight;
+                } else if (msg.type === 'timeout') {
+                    content.textContent += '\n\n' + msg.message;
+                } else if (msg.type === 'error') {
+                    content.textContent += '\n\nError: ' + msg.message;
+                } else if (msg.type === 'exit') {
+                    content.textContent += `\n\n[Process exited with code ${msg.code}]`;
+                    pythonRunWS = null;
+                }
+            };
+
+            pythonRunWS.onclose = () => {
+                pythonRunWS = null;
+            };
+
+            pythonRunWS.onerror = (err) => {
+                content.textContent += '\n\nWebSocket Error. Connection failed.';
+                console.error('WS Error:', err);
+                pythonRunWS = null;
+            };
+
+            // Capture keyboard input with backspace support
+            panel.onkeydown = (e) => {
+                if (!pythonRunWS || pythonRunWS.readyState !== WebSocket.OPEN) return;
+
+                if (e.key === 'Enter') {
+                    pythonRunWS.send(JSON.stringify({ type: 'input', data: lineBuffer + '\n' }));
+                    content.textContent += '\n';
+                    lineBuffer = '';
+                } else if (e.key === 'Backspace') {
+                    if (lineBuffer.length > 0) {
+                        lineBuffer = lineBuffer.slice(0, -1);
+                        content.textContent = content.textContent.slice(0, -1);
+                    }
+                    e.preventDefault();
+                } else if (e.key.length === 1) {
+                    lineBuffer += e.key;
+                    content.textContent += e.key;
+                }
+                panel.scrollTop = panel.scrollHeight;
+            };
+        };
+
+        document.getElementById('previewHtmlBtn').onclick = function () {
+            if (!monacoEditor) return;
+            const userCode = monacoEditor.getValue();
+            const panel = document.getElementById('previewPanel');
+            const iframe = document.getElementById('previewIframe');
+            panel.style.display = 'flex';
+            
+            // Extract body content from user's HTML
+            let bodyContent = userCode;
+            const bodyMatch = userCode.match(/<body[^>]*>([\s\S]*)<\/body>/i);
+            if (bodyMatch) {
+                bodyContent = bodyMatch[1];
+                console.log('[DEBUG] Extracted body content:', bodyContent.substring(0, 300));
+            } else if (userCode.toLowerCase().includes('<!doctype') || userCode.toLowerCase().includes('<html')) {
+                // If full HTML exists but no explicit body tags, extract from </head> to </html>
+                const headEnd = userCode.toLowerCase().indexOf('</head>');
+                if (headEnd !== -1) {
+                    bodyContent = userCode.substring(headEnd + 7);
+                    bodyContent = bodyContent.replace(/<\/html>/gi, '').replace(/<body[^>]*>/gi, '').trim();
+                    console.log('[DEBUG] Extracted from head end:', bodyContent.substring(0, 300));
+                }
+            }
+            
+            // Build clean, complete HTML with proper styling
+            const fullHtml = `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Preview</title>
+    <style>
+        html, body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            background-color: #ffffff;
+            color: #333333;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+        }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            background-color: transparent;
+            color: inherit;
+        }
+        body {
+            padding: 20px;
+            background-color: #ffffff !important;
+            color: #333333 !important;
+            line-height: 1.6;
+        }
+        h1 {
+            font-size: 2.5rem;
+            color: #000000;
+            margin: 0 0 15px 0;
+            padding: 10px 0;
+            border-bottom: 3px solid #007acc;
+            font-weight: 600;
+            background-color: transparent;
+            display: block;
+        }
+        h2, h3, h4, h5, h6 {
+            color: #000000;
+            background-color: transparent;
+            font-weight: 600;
+        }
+        h2 { font-size: 2rem; margin: 20px 0 10px 0; }
+        h3 { font-size: 1.6rem; margin: 15px 0 10px 0; }
+        h4 { font-size: 1.3rem; margin: 12px 0 8px 0; }
+        h5, h6 { margin: 10px 0 5px 0; }
+        p {
+            margin: 10px 0;
+            color: #333333;
+            background-color: transparent;
+        }
+        a {
+            color: #007acc;
+            text-decoration: none;
+            background-color: transparent;
+        }
+        a:hover { text-decoration: underline; }
+        button {
+            padding: 10px 20px;
+            background: #007acc !important;
+            color: white !important;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 1rem;
+            margin: 5px 0;
+        }
+        button:hover { background: #005a9e !important; }
+        ul {
+            list-style-type: disc;
+            margin: 10px 0 10px 40px;
+            padding: 0;
+            background-color: transparent;
+        }
+        ol {
+            list-style-type: decimal;
+            margin: 10px 0 10px 40px;
+            padding: 0;
+            background-color: transparent;
+        }
+        li {
+            margin: 5px 0;
+            color: #333333;
+            background-color: transparent;
+            display: list-item;
+        }
+        code {
+            background: #f4f4f4;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+            color: #d73a49;
+        }
+        pre {
+            background: #f4f4f4;
+            padding: 15px;
+            border-radius: 4px;
+            overflow-x: auto;
+            margin: 10px 0;
+            border-left: 4px solid #007acc;
+            color: #333;
+        }
+        table { border-collapse: collapse; width: 100%; margin: 10px 0; background-color: transparent; }
+        th, td { border: 1px solid #ddd; padding: 12px; text-align: left; color: #333333; background-color: transparent; }
+        th { background: #f4f4f4 !important; font-weight: 600; }
+        img { max-width: 100%; height: auto; margin: 10px 0; background-color: transparent; }
+    </style>
+</head>
+<body>
+${bodyContent}
+</body>
+</html>`;
+            
+            iframe.srcdoc = fullHtml;
+            console.log('[PREVIEW] HTML loaded. Total length:', fullHtml.length);
+            console.log('[PREVIEW] Contains UL:', fullHtml.includes('<ul'));
+            console.log('[PREVIEW] Contains LI items:', fullHtml.match(/<li>/g)?.length || 0);
+        };
+
+        function closePreviewPanel() {
+            document.getElementById('previewPanel').style.display = 'none';
+            if (monacoEditor) {
+                setTimeout(() => monacoEditor.focus(), 0);
+            }
+        }
+
+        function closeTerminal() {
+            if (pythonRunWS) {
+                pythonRunWS.close();
+                pythonRunWS = null;
+            }
+            document.getElementById('terminalModal').style.display = 'none';
+            if (monacoEditor) {
+                setTimeout(() => monacoEditor.focus(), 0);
+            }
+        }
+
+        function isVisible(element) {
+            return !!element && window.getComputedStyle(element).display !== 'none';
+        }
+
+        document.addEventListener('keydown', function (event) {
+            if (event.key !== 'Escape') return;
+
+            if (isVisible(document.getElementById('terminalModal'))) {
+                closeTerminal();
+                return;
+            }
+
+            if (isVisible(document.getElementById('previewPanel'))) {
+                closePreviewPanel();
+                return;
+            }
+
+            if (isVisible(document.getElementById('codeEditorPage'))) {
+                closeFullPageEditor();
+                return;
+            }
+
+            const taskModal = document.getElementById('taskModal');
+            if (isVisible(taskModal)) {
+                taskModal.style.display = 'none';
+            }
+        });
+
+        // ---- AI Assistant Panel ----
+
+        function toggleHistoryPanel() {
+            const panel = document.getElementById('historyPanel');
+            const btn = document.getElementById('historyBtn');
+            const aiPanel = document.getElementById('aiAssistantPanel');
+            const aiBtn = document.getElementById('aiAssistantBtn');
+
+            if (panel.style.display === 'none') {
+                // Close AI panel if open
+                if (aiPanel.style.display !== 'none') {
+                    toggleAiPanel();
+                }
+                panel.style.display = 'flex';
+                btn.classList.add('active');
+                loadHistory();
+            } else {
+                panel.style.display = 'none';
+                btn.classList.remove('active');
+            }
+            // Trigger Monaco layout recalc
+            if (monacoEditor) setTimeout(() => monacoEditor.layout(), 350);
+        }
+
+        async function loadHistory() {
+            const list = document.getElementById('historyList');
+            if (!currentTaskId) return;
+
+            try {
+                const res = await fetch(`/api/tasks/${currentTaskId}/history`);
+                const data = await res.json();
+
+                if (!data.history || data.history.length === 0) {
+                    list.innerHTML = `<div style="padding: 20px; text-align: center; color: var(--text-muted);">No history available yet.</div>`;
+                    return;
+                }
+
+                list.innerHTML = '';
+                data.history.forEach((entry, idx) => {
+                    const item = document.createElement('div');
+                    item.className = 'history-item';
+
+                    const date = new Date(entry.timestamp);
+                    const timeStr = date.toLocaleString();
+
+                    const codePreview = entry.code.split('\n')[0].substring(0, 40) + '...';
+
+                    item.innerHTML = `
+                                <div class="history-item-header">
+                                    <span class="history-item-time">${timeStr}</span>
+                                    <span class="history-item-user">${entry.username}</span>
+                                </div>
+                                <div class="history-item-preview">${codePreview.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</div>
+                            `;
+
+                    item.onclick = async function () {
+                        const confirmed = await window.appConfirm({
+                            title: 'Restore saved version?',
+                            message: `Restore this version from ${timeStr}? Current changes will be overwritten.`,
+                            confirmText: 'Restore version',
+                            tone: 'danger'
+                        });
+                        if (confirmed) {
+                            applyCodeToEditor(entry.code);
+                        }
+                    };
+                    list.appendChild(item);
+                });
+            } catch (e) {
+                console.error(e);
+                list.innerHTML = `<div style="padding: 20px; text-align: center; color: #ef4444;">Error loading history.</div>`;
+            }
+        }
+
+        function toggleAiPanel() {
+            const panel = document.getElementById('aiAssistantPanel');
+            const btn = document.getElementById('aiAssistantBtn');
+            aiPanelOpen = !aiPanelOpen;
+            if (aiPanelOpen) {
+                panel.style.display = 'flex';
+                btn.classList.add('active');
+                // Focus input
+                setTimeout(() => document.getElementById('aiInput').focus(), 100);
+            } else {
+                panel.style.display = 'none';
+                btn.classList.remove('active');
+            }
+            // Trigger Monaco layout recalc
+            if (monacoEditor) setTimeout(() => monacoEditor.layout(), 350);
+        }
+
+        function renderAiReply(markdown) {
+            // Use marked.js for markdown rendering
+            let html = '';
+            if (typeof marked !== 'undefined') {
+                marked.setOptions({
+                    highlight: function (code, lang) {
+                        if (typeof hljs !== 'undefined' && lang && hljs.getLanguage(lang)) {
+                            return hljs.highlight(code, { language: lang }).value;
+                        }
+                        return code;
+                    },
+                    breaks: true
+                });
+                html = marked.parse(markdown);
+            } else {
+                html = markdown.replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br>');
+            }
+
+            return html;
+        }
+
+        function attachApplyButtonListeners(containerElement) {
+            // Find all code blocks and ensure they have Apply buttons with listeners
+            const codeBlocks = containerElement.querySelectorAll('pre code');
+            codeBlocks.forEach((block) => {
+                const codeText = block.textContent;
+                const preElement = block.parentElement;
+                
+                // Check if button already exists after this code block
+                let applyBtn = preElement.nextElementSibling;
+                if (!applyBtn || !applyBtn.classList.contains('ai-apply-btn')) {
+                    // Create wrapper and button
+                    const wrapper = document.createElement('div');
+                    applyBtn = document.createElement('button');
+                    applyBtn.className = 'ai-apply-btn';
+                    applyBtn.type = 'button';
+                    applyBtn.textContent = '✨ Apply to Editor';
+                    wrapper.appendChild(applyBtn);
+                    preElement.after(wrapper);
+                }
+                
+                // Attach click listener
+                const handler = function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    console.log('Apply button clicked, code length:', codeText.length);
+                    applyCodeToEditor(codeText);
+                };
+                
+                applyBtn.removeEventListener('click', applyBtn._applyHandler);
+                applyBtn._applyHandler = handler;
+                applyBtn.addEventListener('click', handler);
+                console.log('Attached listener to Apply button');
+            });
+        }
+
+        async function applyCodeToEditor(code) {
+            console.log('applyCodeToEditor called with code length:', code ? code.length : 0);
+            console.log('monacoEditor exists:', !!monacoEditor);
+            console.log('currentTaskId:', currentTaskId);
+            
+            if (!monacoEditor) {
+                console.error('Monaco editor not initialized');
+                window.appNotice('Editor not initialized. Please try again.', 'error');
+                return;
+            }
+            
+            if (!code) {
+                console.error('No code provided');
+                window.appNotice('No code to apply.', 'error');
+                return;
+            }
+            
+            // Get the current code before replacing
+            const currentCode = monacoEditor.getValue();
+            console.log('Current code length:', currentCode.length);
+            
+            // If code is the same, no need to apply
+            if (currentCode === code) {
+                console.log('Code is identical to current editor content');
+                window.appNotice('Code is already the same in the editor', 'info');
+                return;
+            }
+            
+            // Save the current code to history first
+            if (currentTaskId && currentCode) {
+                try {
+                    console.log('Saving current code to history for taskId:', currentTaskId);
+                    const response = await fetch(`/api/tasks/${currentTaskId}/save-history`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ code: currentCode })
+                    });
+                    
+                    console.log('History save response status:', response.status);
+                    const responseData = await response.json();
+                    console.log('History save response data:', responseData);
+                    
+                    if (!response.ok) {
+                        console.warn('Failed to save code to history:', response.statusText, responseData);
+                        window.appNotice('Warning: Could not save to history, but applying code anyway.', 'warning');
+                    } else {
+                        console.log('Code saved to history successfully');
+                    }
+                } catch (e) {
+                    console.error('Error saving code to history:', e.message, e);
+                    window.appNotice('Warning: Error saving history, but applying code anyway.', 'warning');
+                }
+            } else {
+                console.warn('Skipping history save - currentTaskId:', currentTaskId, 'currentCode length:', currentCode.length);
+            }
+            
+            // Now replace with the new code
+            console.log('Replacing editor content with new code');
+            monacoEditor.setValue(code);
+            window.appNotice('Code applied successfully! Previous version saved to history.', 'success');
+        }
+
+        async function sendAiMessage() {
+            const input = document.getElementById('aiInput');
+            const text = (input.value || '').trim();
+            if (!text) return;
+            input.value = '';
+
+            const container = document.getElementById('aiMessages');
+
+            // Add user message
+            const userDiv = document.createElement('div');
+            userDiv.className = 'ai-msg ai-msg-user';
+            userDiv.textContent = text;
+            container.appendChild(userDiv);
+            container.scrollTop = container.scrollHeight;
+
+            // Add typing indicator
+            const typingDiv = document.createElement('div');
+            typingDiv.className = 'ai-msg-typing';
+            typingDiv.textContent = '🤖 Thinking…';
+            container.appendChild(typingDiv);
+            container.scrollTop = container.scrollHeight;
+
+            // Build context from editor
+            const editorCode = monacoEditor ? monacoEditor.getValue() : '';
+            const language = currentTaskType === 'frontend' ? 'html' : 'python';
+            const taskTitle = document.getElementById('editorTaskTitle').textContent || '';
+
+            try {
+                const res = await fetch('/api/chat/ai', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        message: text,
+                        context: {
+                            code: editorCode,
+                            language: language,
+                            task_title: taskTitle
+                        }
+                    })
+                });
+                const data = await res.json();
+                typingDiv.remove();
+
+                const reply = (data.reply || 'No response.').trim();
+                const replyDiv = document.createElement('div');
+                replyDiv.className = 'ai-msg ai-msg-assistant';
+                replyDiv.innerHTML = renderAiReply(reply);
+                container.appendChild(replyDiv);
+                
+                // Attach listeners to Apply buttons NOW that elements are in the DOM
+                console.log('Attaching apply button listeners...');
+                attachApplyButtonListeners(replyDiv);
+            } catch (e) {
+                typingDiv.remove();
+                const errDiv = document.createElement('div');
+                errDiv.className = 'ai-msg ai-msg-assistant';
+                errDiv.textContent = 'Sorry, something went wrong. Please try again.';
+                container.appendChild(errDiv);
+            }
+            container.scrollTop = container.scrollHeight;
+        }
+
+        // Enter to send, Shift+Enter for new line
+        document.getElementById('aiInput').addEventListener('keydown', function (e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendAiMessage();
+            }
+        });
+
+        document.getElementById('submitCodeBtn').onclick = async function () {
+            if (!monacoEditor) {
+                console.error('Submit failed: monacoEditor is not initialized');
+                return;
+            }
+            if (!currentTaskId) {
+                console.error('Submit failed: currentTaskId is missing');
+                showUiNotice('No task is currently selected. Please close and re-open the task.', 'error');
+                return;
+            }
+
+            const code = monacoEditor.getValue();
+            console.log('Attempting to submit code for Task ID:', currentTaskId);
+
+            const btn = this;
+            const originalText = btn.textContent;
+            btn.textContent = 'Submitting...';
+            btn.disabled = true;
+
+            try {
+                const res = await fetch('/submit_code', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ task_id: currentTaskId, code: code })
+                });
+
+                console.log('Submission response status:', res.status);
+
+                if (res.ok) {
+                    const data = await res.json();
+                    console.log('Submission success:', data);
+                    showUiNotice('Code submitted successfully!', 'success', true);
+                    await closeFullPageEditor(true); // skip auto-save
+                    window.location.reload();
+                } else {
+                    const data = await res.json();
+                    console.error('Submission failed with error:', data);
+                    showUiNotice(data.detail || 'Failed to submit', 'error');
+                    btn.textContent = originalText;
+                    btn.disabled = false;
+                }
+            } catch (e) {
+                console.error('Submission fetch error:', e);
+                showUiNotice('Error submitting code: ' + e.message, 'error');
+                btn.textContent = originalText;
+                btn.disabled = false;
+            }
+        };
+
+        document.getElementById('closeEditorBtn').onclick = () => closeFullPageEditor();
+
+        document.getElementById('pauseTaskEditorBtn').onclick = async function () {
+            if (!currentTaskId || !monacoEditor) return;
+
+            // Save current code before pausing
+            const code = monacoEditor.getValue();
+
+            try {
+                const res = await fetch(`/api/pause_task/${currentTaskId}`, {
+                    method: "POST",
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ code: code, task_id: currentTaskId })
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    showUiNotice('Task paused successfully. Your code has been saved.', 'success', true);
+                    await closeFullPageEditor(true); // already saved, skip auto-save
+                    window.location.reload();
+                } else {
+                    showUiNotice(data.detail || 'Failed to pause task', 'error');
+                }
+            } catch (e) {
+                console.error(e);
+                showUiNotice('Error pausing task', 'error');
+            }
+        };
+
+        document.getElementById('closeModalBtn').onclick = function () {
+            document.getElementById('taskModal').style.display = "none";
+        };
+
+        window.onclick = function (event) {
+            const modal = document.getElementById('taskModal');
+            if (event.target === modal) {
+                modal.style.display = "none";
+            }
+            const terminalModal = document.getElementById('terminalModal');
+            if (event.target === terminalModal) {
+                closeTerminal();
+            }
+            const previewPanel = document.getElementById('previewPanel');
+            if (event.target === previewPanel) {
+                closePreviewPanel();
+            }
+        };
+        // Listen for theme changes to update Monaco
+        const observer = new MutationObserver((mutations) => {
+            mutations.forEach((mutation) => {
+                if (mutation.attributeName === 'data-theme') {
+                    const newTheme = document.documentElement.getAttribute('data-theme');
+                    if (monacoEditor) {
+                        monaco.editor.setTheme(newTheme === 'dark' ? 'vs-dark' : 'vs');
+                    }
+                }
+            });
+        });
+        observer.observe(document.documentElement, { attributes: true });
+    </script>
+
+    {% include 'chat_widget.html' %}
+
+</body>
+
+</html>

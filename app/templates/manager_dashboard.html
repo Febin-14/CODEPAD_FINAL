@@ -1,0 +1,1621 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manager Dashboard</title>
+    <link rel="stylesheet" href="{{ url_for('static', path='style.css') }}?v=11">
+    <script src="{{ url_for('static', path='ui_feedback.js') }}"></script>
+    <script src="{{ url_for('static', path='chat.js') }}?v=2"></script>
+    <script src="{{ url_for('static', path='profile_popover.js') }}?v=2" defer></script>
+    <!-- Monaco Editor Loader -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.36.1/min/vs/loader.min.js"></script>
+    <script src="{{ url_for('static', path='theme.js') }}"></script>
+    <script>
+        {% if projects %}
+        window.currentProjectId = "{{ projects[0]._id }}";
+        {% else %}
+        window.currentProjectId = "";
+        {% endif %}
+    </script>
+</head>
+
+<body class="app-shell manager-shell">
+    <div class="app-wrapper">
+
+        <header class="top-bar">
+            <div class="header-container">
+                <h1 class="brand-title">CodePad</h1>
+                <div class="profile-section">
+                    <a href="/developer_analytics" class="nav-link">Developer Analytics</a>
+                    <span class="greeting">Hello, <strong>{{ username }}</strong></span>
+                    {% include 'profile_popover.html' %}
+
+                    <a href="/logout" class="logout-link">Logout</a>
+
+                    <button id="theme-toggle" class="theme-toggle" aria-label="Toggle Theme" title="Toggle Theme">
+                        <img src="/static/moon.png" id="theme-icon" class="theme-icon" alt="Theme Toggle">
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <main class="main-content">
+            <div class="layout-grid page-layout">
+                <section class="page-header page-header-split">
+                    <div class="page-header-copy">
+                        <h2 class="page-title">Manager Dashboard</h2>
+                        <p class="page-description">Create projects, assign developers, and keep the review queue under control.</p>
+                    </div>
+                    <div class="summary-strip summary-strip-manager">
+                        <article class="summary-item">
+                            <span class="summary-label">Projects</span>
+                            <strong class="summary-value">{{ projects|length }}</strong>
+                        </article>
+                        <article class="summary-item">
+                            <span class="summary-label">Developers</span>
+                            <strong class="summary-value">{{ developers|length }}</strong>
+                        </article>
+                        <article class="summary-item">
+                            <span class="summary-label">In Progress</span>
+                            <strong class="summary-value">{{ tasks|selectattr('status', 'equalto', 'in_progress')|list|length }}</strong>
+                        </article>
+                        <article class="summary-item">
+                            <span class="summary-label">In Review</span>
+                            <strong class="summary-value">{{ tasks|selectattr('status', 'equalto', 'submitted_for_review')|list|length }}</strong>
+                        </article>
+                        <article class="summary-item">
+                            <span class="summary-label">Join Requests</span>
+                            <strong class="summary-value" id="pendingRequestCount">{{ pending_developers|length }}</strong>
+                        </article>
+                    </div>
+                </section>
+
+                <section id="pendingRequestsPanel" class="panel pending-requests-panel"{% if not pending_developers %} hidden{% endif %}>
+                    <div class="panel-header">
+                        <div class="section-stack">
+                            <h2 class="section-title">Developer Join Requests</h2>
+                            <p class="section-description">Approve a developer to make them available for login and project assignment. Rejecting removes the account.</p>
+                        </div>
+                        <span id="pendingRequestBadge" class="status-indicator status-submitted">{{ pending_developers|length }} Pending</span>
+                    </div>
+                    <div id="pendingRequestList" class="pending-request-list">
+                        {% for dev in pending_developers %}
+                        <article class="pending-request-card" data-pending-username="{{ dev.username }}">
+                            <div class="pending-request-head">
+                                <div class="dev-avatar pending-request-avatar">{{ dev.username[0].upper() }}</div>
+                                <div class="pending-request-copy">
+                                    <h3 class="pending-request-name">{{ dev.username }}</h3>
+                                    <p class="pending-request-role">{{ dev.role|replace('_', ' ')|title }}</p>
+                                </div>
+                            </div>
+                            <p class="pending-request-description">{{ dev.description or "No description provided." }}</p>
+                            <div class="pending-request-actions">
+                                <button type="button" class="approve-btn" onclick='approvePendingDeveloper({{ dev.username|tojson }})'>
+                                    Approve
+                                </button>
+                                <button type="button" class="reject-btn" onclick='rejectPendingDeveloper({{ dev.username|tojson }})'>
+                                    Reject
+                                </button>
+                            </div>
+                        </article>
+                        {% endfor %}
+                    </div>
+                </section>
+
+                <section class="panel github-config-panel">
+                    <div class="panel-header">
+                        <div class="section-stack">
+                            <h2 class="section-title">GitHub Integration</h2>
+                            <p class="section-description">Connect a repository for manual manager pushes and automatic sync when approved tasks are closed.</p>
+                        </div>
+                        <span id="githubConfigBadge" class="status-indicator status-paused">Not connected</span>
+                    </div>
+                    <div class="panel-body">
+                        <form id="githubConfigForm" class="creation-form"
+                            style="padding: 0; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); align-items: end;">
+                            <div class="input-group">
+                                <label for="githubRepoInput" class="input-label">Repository</label>
+                                <input type="text" id="githubRepoInput" class="text-input" placeholder="owner/repository"
+                                    autocomplete="off" required>
+                            </div>
+                            <div class="input-group">
+                                <label for="githubTokenInput" class="input-label">Access Token</label>
+                                <input type="password" id="githubTokenInput" class="text-input"
+                                    placeholder="GitHub personal access token" autocomplete="new-password">
+                            </div>
+                            <div class="review-actions" style="grid-column: 1 / -1; margin-top: 0; justify-content: flex-start;">
+                                <button type="submit" class="submit-button" id="githubConnectBtn">Connect GitHub</button>
+                                <button type="button" class="secondary-button" onclick="loadGitHubConfig()">Refresh Status</button>
+                                <button type="button" class="reject-btn" id="githubDisconnectBtn" onclick="disconnectGitHub()">Disconnect</button>
+                            </div>
+                        </form>
+                        <p id="githubConfigHelp" class="section-description" style="margin-top: 12px;">
+                            Repository format must be <code>owner/repository</code>. Use a classic token with <code>repo</code> scope or a fine-grained token with <code>Contents: Read and write</code>. Leave the token blank after the first save to keep the current token.
+                        </p>
+                    </div>
+                </section>
+
+                <div class="creation-row dashboard-row">
+                    <section class="panel creation-panel">
+                        <div class="panel-header">
+                            <div class="section-stack">
+                                <h2 class="section-title">New Project</h2>
+                                <p class="section-description">Start a workspace and decide whether developers are chosen manually or automatically.</p>
+                            </div>
+                        </div>
+                        <form action="/add_project" method="post" class="creation-form">
+                            <div class="input-group">
+                                <label for="project-title" class="input-label">Project Title</label>
+                                <input type="text" id="project-title" name="title" class="text-input"
+                                    placeholder="e.g. Website Redesign" required>
+                            </div>
+
+                            <div class="input-group">
+                                <label for="project-desc" class="input-label">Description (Optional)</label>
+                                <textarea id="project-desc" name="description" class="textarea-input"
+                                    placeholder="Brief physical description or goal of the project."
+                                    rows="2"></textarea>
+                            </div>
+
+                            <div class="input-group">
+                                <label class="input-label">Assign Developers</label>
+                                <div class="assign-toggle-wrap">
+                                    <button type="button" class="assign-toggle-btn active" data-mode="manual"
+                                        onclick="setAssignMode('manual')">👤 Manual</button>
+                                    <button type="button" class="assign-toggle-btn" data-mode="ai"
+                                        onclick="setAssignMode('ai')">🤖 AI Auto-Assign</button>
+                                </div>
+                                <input type="hidden" id="assignModeInput" name="assign_mode" value="manual">
+                                <div class="dev-selection-container" id="create-project-devs">
+                                    <div class="dev-role-group">
+                                        <div class="role-title">Frontend Developers</div>
+                                        <div class="dev-grid">
+                                            {% for dev in developers if 'frontend' in dev.role.lower() %}
+                                            <div class="dev-card" data-username="{{ dev.username }}"
+                                                onclick="toggleDevSelection(this, 'create')">
+                                                <div class="status-icon"></div>
+                                                <div class="dev-avatar">{{ dev.username[0].upper() }}</div>
+                                                <div class="dev-name">{{ dev.username }}</div>
+                                                <div class="dev-role-sub">Frontend</div>
+                                                <div class="dev-availability availability-{{ 'free' if dev.is_free else 'busy' }}">
+                                                    {{ dev.availability_label }}
+                                                </div>
+                                                <div class="dev-load">{{ dev.availability_detail }}</div>
+                                            </div>
+                                            {% endfor %}
+                                        </div>
+                                    </div>
+                                    <div class="dev-role-group">
+                                        <div class="role-title">Backend Developers</div>
+                                        <div class="dev-grid">
+                                            {% for dev in developers if 'backend' in dev.role.lower() %}
+                                            <div class="dev-card" data-username="{{ dev.username }}"
+                                                onclick="toggleDevSelection(this, 'create')">
+                                                <div class="status-icon"></div>
+                                                <div class="dev-avatar">{{ dev.username[0].upper() }}</div>
+                                                <div class="dev-name">{{ dev.username }}</div>
+                                                <div class="dev-role-sub">Backend</div>
+                                                <div class="dev-availability availability-{{ 'free' if dev.is_free else 'busy' }}">
+                                                    {{ dev.availability_label }}
+                                                </div>
+                                                <div class="dev-load">{{ dev.availability_detail }}</div>
+                                            </div>
+                                            {% endfor %}
+                                        </div>
+                                    </div>
+                                </div>
+                                <div id="aiAssignMessage" class="ai-assign-msg" style="display: none;">
+                                    <div class="ai-assign-icon">🤖</div>
+                                    <div class="ai-assign-text">Auto-assign picks the least-busy approved frontend and backend developers.</div>
+                                </div>
+                                <!-- Hidden select to actually submit data -->
+                                <select name="assigned_developers" id="create-project-select-hidden" multiple
+                                    style="display:none;" required>
+                                    {% for dev in developers %}
+                                    <option value="{{ dev.username }}">{{ dev.username }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+
+                            <button type="submit" class="submit-button">
+                                Create Project
+                            </button>
+                        </form>
+                    </section>
+
+                    <section class="panel overview-panel">
+                        <div class="panel-header">
+                            <div class="section-stack">
+                                <h2 class="section-title">Projects</h2>
+                                <p class="section-description">Review current workspaces, check status, and open project settings.</p>
+                            </div>
+                        </div>
+                        <div class="table-wrapper">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Project Title</th>
+                                        <th>Description</th>
+                                        <th style="cursor: pointer; user-select: none;" onclick="toggleDevColumn()">
+                                            Assigned Developers
+                                            <span id="devColToggle"
+                                                style="font-size: 0.75rem; margin-left: 6px; opacity: 0.6;">👁</span>
+                                        </th>
+                                        <th>Status</th>
+                                        <th>Progress</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for project in projects %}
+                                    <tr>
+                                        <td class="project-link-cell"
+                                            onclick="window.location.href='/projects/{{ project._id }}'">
+                                            {{ project.title }}
+                                        </td>
+                                        <td class="description-cell project-link-cell"
+                                            onclick="window.location.href='/projects/{{ project._id }}'">
+                                            {{ project.description or "—" }}
+                                        </td>
+                                        <td>
+                                            <div class="dev-col-content chip-list">
+                                                {% for dev in project.assigned_developer_details %}
+                                                <span class="developer-chip" title="{{ dev.availability_detail }}">
+                                                    {{ dev.username }} ({{ dev.availability_label }})
+                                                </span>
+                                                {% endfor %}
+                                            </div>
+                                            <span class="dev-col-hidden"
+                                                style="display: none;">{{
+                                                project.assigned_developers|length }} dev(s)</span>
+                                        </td>
+                                        <td>
+                                            <span class="status-indicator status-{{ project.status or 'active' }}">
+                                                {{ (project.status or 'active')|capitalize }}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <div class="project-progress-cell">
+                                                <div class="project-progress-copy">
+                                                    <strong>{{ project.completion_percent }}%</strong>
+                                                    {% if project.total_tasks %}
+                                                    <span>{{ project.done_tasks }}/{{ project.total_tasks }} done</span>
+                                                    {% else %}
+                                                    <span>No tasks yet</span>
+                                                    {% endif %}
+                                                </div>
+                                                <div class="progress-track">
+                                                    <span class="progress-fill" style="width: {{ project.completion_percent }}%;"></span>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <div class="table-actions">
+                                                <button type="button" class="view-code-btn"
+                                                    data-target="{{ project._id }}" data-title="{{ project.title }}"
+                                                    data-desc="{{ project.description or '' }}"
+                                                    data-devs='{{ project.assigned_developers | tojson }}'
+                                                    onclick='openEditProjectModal(this.dataset.target, this.dataset.title, this.dataset.desc, JSON.parse(this.dataset.devs || "[]"))'
+                                                    title="Edit Project">
+                                                    Edit
+                                                </button>
+                                                <button type="button" class="delete-btn" title="Delete Project"
+                                                    onclick="openDeleteProjectModal('{{ project._id }}', '{{ project.title|escape }}')">
+                                                    &times;
+                                                </button>
+                                                <!-- Hidden form for actual submission -->
+                                                <form id="delete-form-{{ project._id }}"
+                                                    action="/api/delete_project/{{ project._id }}" method="post"
+                                                    style="display: none;">
+                                                </form>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                    {% if not projects %}
+                                    <tr>
+                                        <td colspan="6" class="inline-empty-state">No projects created yet.</td>
+                                    </tr>
+                                    {% endif %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </section>
+                </div>
+
+            </div>
+        </main>
+
+        <!-- Live Code View Modal -->
+        <div id="liveCodeModal" class="modal">
+            <div class="modal-content live-modal-content">
+                <div class="modal-header">
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <span class="live-indicator" id="liveIndicator">🔴</span>
+                        <h3 id="liveModalTaskTitle">Live Code View</h3>
+                        <span class="live-status-badge" id="liveStatusBadge">LIVE</span>
+                    </div>
+                    <span class="close-modal" onclick="closeLiveCodeModal()">&times;</span>
+                </div>
+                <div class="modal-body" style="padding: 0;">
+                    <!-- Container for Monaco Editor (Live View) -->
+                    <div id="live-monaco-editor-container" style="width: 100%; height: 600px;"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Code View Modal -->
+        <div id="codeModal" class="modal">
+            <div class="modal-content"
+                style="max-width: 1000px; border-radius: 12px; border: 1px solid rgba(0, 0, 0, 0.2); box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);">
+                <div class="modal-header">
+                    <h3 id="modalTaskTitle">Task Code</h3>
+                    <span class="close-modal" onclick="closeCodeModal()">&times;</span>
+                </div>
+                <div class="modal-body" style="padding: 0;">
+                    <div id="monaco-editor-container" style="width: 100%; height: 500px;"></div>
+                </div>
+                <div class="review-actions" style="padding: 16px 20px; margin-top: 0; justify-content: flex-end; border-top: 1px solid #333;">
+                    <button type="button" class="secondary-button" onclick="pushCurrentTaskToGitHub()">Push to GitHub</button>
+                    <button type="button" class="secondary-button" onclick="openCurrentTaskGitHubUrl()">View on GitHub</button>
+                </div>
+                <!-- Review Section -->
+                <div id="reviewSection" class="modal-review-section"
+                    style="display: none; padding: 20px; background: #252526; border-top: 1px solid #333;">
+                    <h4 class="review-header" style="color: #cccccc; margin-bottom: 12px; font-size: 1rem;">Reviewer
+                        Feedback</h4>
+                    <textarea id="reviewComments" class="review-comments-input"
+                        style="width: 100%; min-height: 80px; padding: 12px; border-radius: 4px; background: #1e1e1e; border: 1px solid #444; color: #cccccc; margin-bottom: 16px; resize: vertical;"
+                        placeholder="Type your feedback here... REQUIRED for reassigning."></textarea>
+                    <div class="review-actions" style="display: flex; gap: 12px; justify-content: flex-end;">
+                        <button type="button" class="approve-btn" onclick="approveTask()">Approve & Close Task</button>
+                        <button type="button" class="reject-btn" onclick="rejectTask()">Reassign to Developer</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Edit Project Modal -->
+        <div id="editProjectModal" class="modal">
+            <div class="modal-content" style="max-width: 500px; background-color: var(--bg-card);">
+                <div class="modal-header">
+                    <h3>Edit Project</h3>
+                    <span class="close-modal" onclick="closeEditProjectModal()">&times;</span>
+                </div>
+                <div class="modal-body" style="padding: 24px;">
+                    <form id="editProjectForm" method="post" action="">
+                        <div class="input-group">
+                            <label class="input-label">Project Title</label>
+                            <input type="text" name="title" id="editProjectTitle" class="text-input" required>
+                        </div>
+                        <div class="input-group">
+                            <label class="input-label">Description</label>
+                            <textarea name="description" id="editProjectDesc" class="textarea-input"
+                                rows="3"></textarea>
+                        </div>
+                        <div class="input-group">
+                            <label class="input-label">Assign Developers</label>
+                            <div class="dev-selection-container" id="edit-project-devs">
+                                <div class="dev-role-group">
+                                    <div class="role-title">Frontend Developers</div>
+                                    <div class="dev-grid">
+                                        {% for dev in developers if 'frontend' in dev.role.lower() %}
+                                        <div class="dev-card" data-username="{{ dev.username }}"
+                                            onclick="toggleDevSelection(this, 'edit')">
+                                            <div class="status-icon"></div>
+                                            <div class="dev-avatar">{{ dev.username[0].upper() }}</div>
+                                            <div class="dev-name">{{ dev.username }}</div>
+                                            <div class="dev-role-sub">Frontend</div>
+                                            <div class="dev-availability availability-{{ 'free' if dev.is_free else 'busy' }}">
+                                                {{ dev.availability_label }}
+                                            </div>
+                                            <div class="dev-load">{{ dev.availability_detail }}</div>
+                                        </div>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                                <div class="dev-role-group">
+                                    <div class="role-title">Backend Developers</div>
+                                    <div class="dev-grid">
+                                        {% for dev in developers if 'backend' in dev.role.lower() %}
+                                        <div class="dev-card" data-username="{{ dev.username }}"
+                                            onclick="toggleDevSelection(this, 'edit')">
+                                            <div class="status-icon"></div>
+                                            <div class="dev-avatar">{{ dev.username[0].upper() }}</div>
+                                            <div class="dev-name">{{ dev.username }}</div>
+                                            <div class="dev-role-sub">Backend</div>
+                                            <div class="dev-availability availability-{{ 'free' if dev.is_free else 'busy' }}">
+                                                {{ dev.availability_label }}
+                                            </div>
+                                            <div class="dev-load">{{ dev.availability_detail }}</div>
+                                        </div>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                            </div>
+                            <!-- Hidden select to actually submit data -->
+                            <select name="assigned_developers" id="edit-project-select-hidden" multiple
+                                style="display:none;" required>
+                                {% for dev in developers %}
+                                <option value="{{ dev.username }}">{{ dev.username }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="review-actions" style="margin-top: 24px;">
+                            <button type="submit" class="approve-btn">Save Changes</button>
+                            <button type="button" class="reject-btn" onclick="closeEditProjectModal()">Cancel</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Edit Task Modal -->
+        <div id="editTaskModal" class="modal">
+            <div class="modal-content" style="max-width: 500px; background-color: var(--bg-card);">
+                <div class="modal-header">
+                    <h3>Edit Task</h3>
+                    <span class="close-modal" onclick="closeEditTaskModal()">&times;</span>
+                </div>
+                <div class="modal-body" style="padding: 24px;">
+                    <form id="editTaskForm" method="post" action="">
+                        <div class="input-group">
+                            <label class="input-label">Task Title</label>
+                            <input type="text" name="title" id="editTaskTitle" class="text-input" required>
+                        </div>
+                        <div class="input-group">
+                            <label class="input-label">Description</label>
+                            <textarea name="description" id="editTaskDesc" class="textarea-input" rows="3"></textarea>
+                        </div>
+                        <div class="input-group">
+                            <label class="input-label">Project</label>
+                            <select name="project_id" id="editTaskProject" class="select-input" required>
+                                {% for project in projects %}
+                                <option value="{{ project._id }}">{{ project.title }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="review-actions" style="margin-top: 24px;">
+                            <button type="submit" class="approve-btn">Save Changes</button>
+                            <button type="button" class="reject-btn" onclick="closeEditTaskModal()">Cancel</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Delete Project Confirmation Modal -->
+        <div id="deleteProjectModal" class="modal">
+            <div class="modal-content" style="max-width: 450px; border-radius: 12px;">
+                <div class="modal-header" style="background-color: #3f1a1a; border-bottom: 1px solid #ef4444;">
+                    <h3 style="color: #ef4444; margin: 0;">Delete Project</h3>
+                    <span class="close-modal" onclick="closeDeleteProjectModal()">&times;</span>
+                </div>
+                <div class="modal-body" style="padding: 24px;">
+                    <p style="color: #e5e5e5; font-size: 1.05rem; margin-bottom: 16px;">
+                        Are you sure you want to delete <strong id="deleteProjectName" style="color: white;"></strong>?
+                    </p>
+                    <p
+                        style="color: #ef4444; font-size: 0.9rem; margin-bottom: 24px; padding: 12px; background: rgba(239, 68, 68, 0.1); border-left: 4px solid #ef4444;">
+                        <strong>WARNING:</strong> All tasks inside this project will also be PERMANENTLY deleted. This
+                        action cannot be undone.
+                    </p>
+                    <div style="display: flex; justify-content: flex-end; gap: 12px;">
+                        <button type="button" class="view-code-btn" style="background-color: #4b5563;"
+                            onclick="closeDeleteProjectModal()">Cancel</button>
+                        <button type="button" class="reject-btn" onclick="confirmDeleteProject()">Yes, Delete
+                            Project</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <style>
+            .modal {
+                display: none;
+                position: fixed;
+                z-index: 1000;
+                left: 0;
+                top: 0;
+                width: 100%;
+                height: 100%;
+                overflow: auto;
+                background-color: rgba(0, 0, 0, 0.5);
+            }
+
+            /* Updated modal styles for dark theme editor */
+            .modal-content {
+                background-color: #1e1e1e;
+                margin: 5% auto;
+                padding: 0;
+                border: 1px solid #444;
+                width: 90%;
+                max-width: 1000px;
+                border-radius: 8px;
+                box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+                overflow: hidden;
+                display: flex;
+                flex-direction: column;
+            }
+
+            .modal-header {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                padding: 15px 20px;
+                background-color: #252526;
+                border-bottom: 1px solid #333;
+                color: #cccccc;
+            }
+
+            .modal-body {
+                padding: 0;
+                background-color: #1e1e1e;
+                flex-grow: 1;
+            }
+
+            .close-modal {
+                color: #aaa;
+                font-size: 28px;
+                font-weight: bold;
+                cursor: pointer;
+            }
+
+            .close-modal:hover {
+                color: white;
+            }
+
+            .view-code-btn {
+                background-color: #4f46e5;
+                color: white;
+                border: none;
+                padding: 6px 12px;
+                border-radius: 4px;
+                cursor: pointer;
+                font-size: 0.85rem;
+                transition: background 0.2s;
+            }
+
+            .view-code-btn:hover {
+                background-color: #4338ca;
+            }
+
+            .download-code-btn {
+                background-color: #10b981;
+                color: white;
+                border: none;
+                padding: 6px 12px;
+                border-radius: 4px;
+                cursor: pointer;
+                font-size: 0.85rem;
+                transition: background 0.2s;
+            }
+
+            .download-code-btn:hover {
+                background-color: #059669;
+            }
+
+            .modal-review-section {
+                padding: 20px;
+                background-color: #252526;
+                border-top: 1px solid #333;
+            }
+
+            .review-header {
+                color: #cccccc;
+                font-size: 1rem;
+                font-weight: 600;
+                margin-bottom: 12px;
+            }
+
+            .review-comments-input {
+                width: 100%;
+                min-height: 100px;
+                padding: 12px;
+                border: 1px solid #444;
+                border-radius: 4px;
+                background-color: #1e1e1e;
+                color: #cccccc;
+                font-size: 0.9rem;
+                font-family: 'Courier New', monospace;
+                resize: vertical;
+                box-sizing: border-box;
+            }
+
+            .review-comments-input:focus {
+                outline: none;
+                border-color: #4f46e5;
+            }
+
+            .review-actions {
+                display: flex;
+                gap: 12px;
+                margin-top: 24px;
+                justify-content: flex-end;
+                align-items: center;
+            }
+
+            .approve-btn {
+                background: linear-gradient(135deg, #10b981, #059669);
+                color: white;
+                border: none;
+                padding: 12px 24px;
+                border-radius: 8px;
+                cursor: pointer;
+                font-size: 0.9rem;
+                font-weight: 600;
+                transition: all 0.2s;
+                box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+            }
+
+            .approve-btn:hover {
+                background: linear-gradient(135deg, #059669, #047857);
+                transform: translateY(-1px);
+                box-shadow: 0 6px 16px rgba(16, 185, 129, 0.4);
+            }
+
+            .reject-btn {
+                background: linear-gradient(135deg, #ef4444, #dc2626);
+                color: white;
+                border: none;
+                padding: 12px 24px;
+                border-radius: 8px;
+                cursor: pointer;
+                font-size: 0.9rem;
+                font-weight: 600;
+                transition: all 0.2s;
+                box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+            }
+
+            .reject-btn:hover {
+                background: linear-gradient(135deg, #dc2626, #b91c1c);
+                transform: translateY(-1px);
+                box-shadow: 0 6px 16px rgba(239, 68, 68, 0.4);
+            }
+
+            .status-indicator.status-submitted {
+                background: rgba(59, 130, 246, 0.1);
+                color: #3b82f6;
+            }
+
+            .status-indicator.status-done {
+                background: rgba(16, 185, 129, 0.1);
+                color: #10b981;
+            }
+
+            .live-view-btn {
+                background-color: #ef4444;
+                color: white;
+                border: none;
+                padding: 6px 12px;
+                border-radius: 4px;
+                cursor: pointer;
+                font-size: 0.85rem;
+                transition: background 0.2s;
+                animation: pulse 2s infinite;
+            }
+
+            .live-view-btn:hover {
+                background-color: #dc2626;
+            }
+
+            @keyframes pulse {
+
+                0%,
+                100% {
+                    opacity: 1;
+                }
+
+                50% {
+                    opacity: 0.7;
+                }
+            }
+
+            .live-modal-content {
+                max-width: 1200px;
+                width: 95%;
+            }
+
+            .live-indicator {
+                font-size: 1.2rem;
+                animation: blink 1s infinite;
+            }
+
+            @keyframes blink {
+
+                0%,
+                100% {
+                    opacity: 1;
+                }
+
+                50% {
+                    opacity: 0.3;
+                }
+            }
+
+            .live-status-badge {
+                background-color: #ef4444;
+                color: white;
+                padding: 4px 8px;
+                border-radius: 4px;
+                font-size: 0.75rem;
+                font-weight: 600;
+                letter-spacing: 0.5px;
+            }
+
+            .live-status-badge.ended {
+                background-color: #6b7280;
+            }
+
+            .live-indicator.ended {
+                opacity: 0.5;
+                animation: none;
+            }
+
+            /* New Developer Selection UI Styles */
+            .dev-selection-container {
+                display: flex;
+                flex-direction: column;
+                gap: 16px;
+                margin-top: 8px;
+            }
+
+            .dev-role-group {
+                background: rgba(255, 255, 255, 0.03);
+                border-radius: 8px;
+                padding: 12px;
+                border: 1px solid rgba(255, 255, 255, 0.05);
+            }
+
+            .role-title {
+                font-size: 0.8rem;
+                font-weight: 700;
+                text-transform: uppercase;
+                letter-spacing: 1px;
+                color: var(--accent-1);
+                margin-bottom: 10px;
+                display: flex;
+                align-items: center;
+                gap: 6px;
+            }
+
+            .dev-grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+                gap: 10px;
+            }
+
+            .dev-card {
+                position: relative;
+                background: var(--bg-card);
+                border: 2px solid transparent;
+                border-radius: 8px;
+                padding: 10px;
+                cursor: pointer;
+                transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                text-align: center;
+                user-select: none;
+            }
+
+            .dev-card:hover {
+                transform: translateY(-2px);
+                background: rgba(255, 255, 255, 0.05);
+            }
+
+            .dev-card.selected {
+                background: rgba(14, 165, 233, 0.1);
+                border-color: var(--accent-1);
+            }
+
+            .dev-card .status-icon {
+                position: absolute;
+                top: 6px;
+                right: 6px;
+                width: 18px;
+                height: 18px;
+                border-radius: 50%;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 10px;
+                font-weight: bold;
+                transition: all 0.2s;
+            }
+
+            .dev-card.selected .status-icon {
+                background: var(--accent-1);
+                color: white;
+            }
+
+            .dev-card.selected .status-icon::before {
+                content: "✓";
+            }
+
+            .dev-card:not(.selected) .status-icon {
+                background: rgba(255, 255, 255, 0.1);
+                color: rgba(255, 255, 255, 0.3);
+            }
+
+            .dev-card:not(.selected) .status-icon::before {
+                content: "×";
+            }
+
+            .dev-name {
+                font-weight: 600;
+                font-size: 0.9rem;
+                color: var(--text-primary);
+                margin-top: 4px;
+            }
+
+            .dev-role-sub {
+                font-size: 0.75rem;
+                color: var(--text-muted);
+            }
+
+            .dev-avatar {
+                width: 32px;
+                height: 32px;
+                background: var(--accent-1);
+                color: white;
+                border-radius: 50%;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-weight: bold;
+                margin-bottom: 6px;
+                font-size: 0.8rem;
+            }
+
+            /* Assign Mode Toggle */
+            .assign-toggle-wrap {
+                display: flex;
+                gap: 0;
+                margin-bottom: 14px;
+                background: rgba(255, 255, 255, 0.04);
+                border-radius: 8px;
+                padding: 3px;
+                border: 1px solid var(--border-subtle);
+            }
+
+            .assign-toggle-btn {
+                flex: 1;
+                padding: 8px 16px;
+                border: none;
+                background: transparent;
+                color: var(--text-muted);
+                font-size: 0.85rem;
+                font-weight: 600;
+                cursor: pointer;
+                border-radius: 6px;
+                transition: all 0.2s ease;
+            }
+
+            .assign-toggle-btn.active {
+                background: linear-gradient(135deg, #6366f1, #4f46e5);
+                color: #fff;
+                box-shadow: 0 2px 8px rgba(99, 102, 241, 0.3);
+            }
+
+            .assign-toggle-btn:not(.active):hover {
+                color: var(--text-primary);
+                background: rgba(255, 255, 255, 0.05);
+            }
+
+            .ai-assign-msg {
+                display: flex;
+                align-items: center;
+                gap: 14px;
+                padding: 20px;
+                background: rgba(99, 102, 241, 0.06);
+                border: 1px dashed rgba(99, 102, 241, 0.25);
+                border-radius: 10px;
+                margin-top: 4px;
+            }
+
+            .ai-assign-icon {
+                font-size: 2rem;
+                flex-shrink: 0;
+            }
+
+            .ai-assign-text {
+                color: var(--text-secondary);
+                font-size: 0.88rem;
+                line-height: 1.5;
+            }
+        </style>
+
+        <script>
+            // Configure Monaco Editor
+            require.config({ paths: { 'vs': 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.36.1/min/vs' } });
+
+            let editor;
+            let currentReviewTaskId = null;
+            let liveEditor = null;
+            let managerWebSocket = null;
+            let currentLiveTaskId = null;
+            let githubConfigState = { configured: false, repo: '', source: 'unset', has_token: false };
+
+            let devColumnVisible = true;
+            document.querySelectorAll('.assign-toggle-btn').forEach((btn) => {
+                btn.textContent = btn.dataset.mode === 'manual' ? 'Manual assignment' : 'Auto assign';
+            });
+            const aiAssignText = document.querySelector('#aiAssignMessage .ai-assign-text');
+            if (aiAssignText) {
+                aiAssignText.textContent = 'Automatic assignment picks the least-busy approved frontend and backend developers.';
+            }
+            document.getElementById('devColToggle').textContent = 'Hide';
+            function toggleDevColumn() {
+                devColumnVisible = !devColumnVisible;
+                document.querySelectorAll('.dev-col-content').forEach(el => {
+                    el.style.display = devColumnVisible ? '' : 'none';
+                });
+                document.querySelectorAll('.dev-col-hidden').forEach(el => {
+                    el.style.display = devColumnVisible ? 'none' : 'inline';
+                });
+                document.getElementById('devColToggle').textContent = devColumnVisible ? 'Hide' : 'Show';
+            }
+
+            function setGitHubConfigState(config) {
+                githubConfigState = Object.assign({ configured: false, repo: '', source: 'unset', has_token: false }, config || {});
+                const badge = document.getElementById('githubConfigBadge');
+                const repoInput = document.getElementById('githubRepoInput');
+                const tokenInput = document.getElementById('githubTokenInput');
+                const helpText = document.getElementById('githubConfigHelp');
+                const disconnectBtn = document.getElementById('githubDisconnectBtn');
+                const connectBtn = document.getElementById('githubConnectBtn');
+
+                if (repoInput && githubConfigState.repo) {
+                    repoInput.value = githubConfigState.repo;
+                }
+                if (tokenInput) {
+                    tokenInput.value = '';
+                    tokenInput.placeholder = githubConfigState.has_token
+                        ? 'Leave blank to keep the current token'
+                        : 'GitHub personal access token';
+                }
+                if (badge) {
+                    badge.textContent = githubConfigState.configured
+                        ? `Connected${githubConfigState.source === 'env' ? ' (env)' : ''}`
+                        : 'Not connected';
+                    badge.className = `status-indicator ${githubConfigState.configured ? 'status-done' : 'status-paused'}`;
+                }
+                if (helpText) {
+                    helpText.innerHTML = githubConfigState.configured
+                        ? `Repository <code>${githubConfigState.repo}</code> is ready for manager pushes.${githubConfigState.source === 'env' ? ' This connection comes from server environment variables.' : ''} Token must allow repository content writes.`
+                        : 'Repository format must be <code>owner/repository</code>. Use a classic token with <code>repo</code> scope or a fine-grained token with <code>Contents: Read and write</code>. Leave the token blank after the first save to keep the current token.';
+                }
+                if (disconnectBtn) {
+                    disconnectBtn.style.display = githubConfigState.source === 'database' ? '' : 'none';
+                }
+                if (connectBtn) {
+                    connectBtn.textContent = githubConfigState.configured ? 'Save GitHub Settings' : 'Connect GitHub';
+                }
+            }
+
+            async function loadGitHubConfig() {
+                try {
+                    const response = await fetch('/api/github/config');
+                    const data = await response.json().catch(() => ({}));
+                    if (!response.ok) {
+                        window.appNotice(data.detail || 'Unable to load GitHub configuration', { type: 'error' });
+                        return;
+                    }
+                    setGitHubConfigState(data);
+                } catch (error) {
+                    console.error(error);
+                    window.appNotice('Unable to load GitHub configuration', { type: 'error' });
+                }
+            }
+
+            async function saveGitHubConfig(event) {
+                event.preventDefault();
+                const repoInput = document.getElementById('githubRepoInput');
+                const tokenInput = document.getElementById('githubTokenInput');
+                const connectBtn = document.getElementById('githubConnectBtn');
+                const originalLabel = connectBtn.textContent;
+
+                connectBtn.disabled = true;
+                connectBtn.textContent = 'Connecting...';
+                try {
+                    const response = await fetch('/api/github/config', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            repo: repoInput.value.trim(),
+                            token: tokenInput.value
+                        })
+                    });
+                    const data = await response.json().catch(() => ({}));
+                    if (!response.ok) {
+                        window.appNotice(data.detail || 'Unable to connect GitHub', { type: 'error' });
+                        return;
+                    }
+                    setGitHubConfigState({
+                        configured: true,
+                        repo: data.repo,
+                        source: 'database',
+                        has_token: true,
+                        updated_at: data.updated_at,
+                        updated_by: data.updated_by
+                    });
+                    window.queueAppNotice(data.message || 'GitHub connected successfully.', { type: 'success' });
+                } catch (error) {
+                    console.error(error);
+                    window.appNotice('Unable to connect GitHub', { type: 'error' });
+                } finally {
+                    connectBtn.disabled = false;
+                    connectBtn.textContent = originalLabel;
+                }
+            }
+
+            async function disconnectGitHub() {
+                const confirmed = await window.appConfirm({
+                    title: 'Disconnect GitHub?',
+                    message: 'Managers will no longer be able to push task code until a repository is connected again.',
+                    confirmText: 'Disconnect',
+                    tone: 'danger'
+                });
+                if (!confirmed) return;
+
+                try {
+                    const response = await fetch('/api/github/config', { method: 'DELETE' });
+                    const data = await response.json().catch(() => ({}));
+                    if (!response.ok) {
+                        window.appNotice(data.detail || 'Unable to disconnect GitHub', { type: 'error' });
+                        return;
+                    }
+                    setGitHubConfigState({ configured: false, repo: '', source: 'unset', has_token: false });
+                    window.queueAppNotice(data.message || 'GitHub disconnected.', { type: 'success' });
+                } catch (error) {
+                    console.error(error);
+                    window.appNotice('Unable to disconnect GitHub', { type: 'error' });
+                }
+            }
+
+            function setAssignMode(mode) {
+                // Toggle button active states
+                document.querySelectorAll('.assign-toggle-btn').forEach(btn => {
+                    btn.classList.toggle('active', btn.dataset.mode === mode);
+                });
+                // Update hidden input
+                document.getElementById('assignModeInput').value = mode;
+                // Toggle visibility
+                const devContainer = document.getElementById('create-project-devs');
+                const aiMsg = document.getElementById('aiAssignMessage');
+                const hiddenSelect = document.getElementById('create-project-select-hidden');
+                if (mode === 'manual') {
+                    devContainer.style.display = '';
+                    aiMsg.style.display = 'none';
+                    hiddenSelect.required = true;
+                } else {
+                    devContainer.style.display = 'none';
+                    aiMsg.style.display = 'flex';
+                    hiddenSelect.required = false;
+                }
+            }
+
+            function openEditProjectModal(projectId, title, description, assignedDevs) {
+                const form = document.getElementById('editProjectForm');
+                form.action = `/api/edit_project/${projectId}`;
+                document.getElementById('editProjectTitle').value = title;
+                document.getElementById('editProjectDesc').value = description;
+
+                // Sync the interactive developer selection cards
+                const container = document.getElementById('edit-project-devs');
+                const cards = container.querySelectorAll('.dev-card');
+                const hiddenSelect = document.getElementById('edit-project-select-hidden');
+
+                // Clear existing selections in the hidden select
+                for (let i = 0; i < hiddenSelect.options.length; i++) {
+                    hiddenSelect.options[i].selected = false;
+                }
+
+                cards.forEach(card => {
+                    const username = card.dataset.username;
+                    if (assignedDevs.includes(username)) {
+                        card.classList.add('selected');
+                        // Find and select in hidden select
+                        for (let i = 0; i < hiddenSelect.options.length; i++) {
+                            if (hiddenSelect.options[i].value === username) {
+                                hiddenSelect.options[i].selected = true;
+                                break;
+                            }
+                        }
+                    } else {
+                        card.classList.remove('selected');
+                    }
+                });
+
+                document.getElementById('editProjectModal').style.display = 'block';
+            }
+
+            function toggleDevSelection(card, type) {
+                card.classList.toggle('selected');
+                const username = card.dataset.username;
+                const hiddenSelect = document.getElementById(type === 'create' ? 'create-project-select-hidden' : 'edit-project-select-hidden');
+
+                // Find and toggle in hidden select
+                for (let i = 0; i < hiddenSelect.options.length; i++) {
+                    if (hiddenSelect.options[i].value === username) {
+                        hiddenSelect.options[i].selected = card.classList.contains('selected');
+                        break;
+                    }
+                }
+            }
+
+            function closeEditProjectModal() {
+                document.getElementById('editProjectModal').style.display = 'none';
+            }
+
+            function openEditTaskModal(taskId, title, description, projectId) {
+                const form = document.getElementById('editTaskForm');
+                form.action = `/api/edit_task/${taskId}`;
+                document.getElementById('editTaskTitle').value = title;
+                document.getElementById('editTaskDesc').value = description;
+                document.getElementById('editTaskProject').value = projectId;
+
+                document.getElementById('editTaskModal').style.display = 'block';
+            }
+
+            function closeEditTaskModal() {
+                document.getElementById('editTaskModal').style.display = 'none';
+            }
+
+            function filterTasksByProject(projectTitle) {
+                const rows = document.querySelectorAll('.data-table tbody tr[data-project-title]');
+                rows.forEach(row => {
+                    if (projectTitle === 'all' || row.dataset.projectTitle === projectTitle) {
+                        row.style.display = '';
+                    } else {
+                        row.style.display = 'none';
+                    }
+                });
+            }
+
+            let projectToDeleteId = null;
+
+            function openDeleteProjectModal(projectId, projectTitle) {
+                projectToDeleteId = projectId;
+                document.getElementById('deleteProjectName').textContent = projectTitle;
+                document.getElementById('deleteProjectModal').style.display = 'block';
+            }
+
+            function closeDeleteProjectModal() {
+                projectToDeleteId = null;
+                document.getElementById('deleteProjectModal').style.display = 'none';
+            }
+
+            function confirmDeleteProject() {
+                if (projectToDeleteId) {
+                    document.getElementById('delete-form-' + projectToDeleteId).submit();
+                }
+            }
+
+
+            function openCodeModal(taskId, title, codeId, taskType) {
+                currentReviewTaskId = taskId;
+                document.getElementById('modalTaskTitle').innerText = 'Code for: ' + title;
+
+                // Get code from textarea value (handles HTML entities correctly)
+                var codeContent = document.getElementById(codeId).value;
+
+                // Check if task status is submitted_for_review to show review section
+                var row = document.querySelector(`tr[data-task-id="${taskId}"]`);
+                var status = row ? (row.dataset.status || '') : '';
+                var showReview = status === 'submitted_for_review';
+                document.getElementById('reviewSection').style.display = showReview ? 'block' : 'none';
+                document.getElementById('reviewComments').value = '';
+
+                document.getElementById('codeModal').style.display = 'block';
+
+                // Determine language based on task type
+                var language = 'python'; // default
+                if (taskType === 'frontend') language = 'html';
+                if (taskType === 'backend') language = 'python';
+
+                if (!editor) {
+                    require(['vs/editor/editor.main'], function () {
+                        editor = monaco.editor.create(document.getElementById('monaco-editor-container'), {
+                            value: codeContent,
+                            language: language,
+                            theme: 'vs-dark',
+                            readOnly: true,
+                            automaticLayout: true,
+                            minimap: { enabled: false },
+                            scrollBeyondLastLine: false,
+                            fontSize: 14
+                        });
+                    });
+                } else {
+                    // Update existing editor instance
+                    var model = editor.getModel();
+                    monaco.editor.setModelLanguage(model, language);
+                    model.setValue(codeContent);
+                    // Layout refresh needed when container becomes visible
+                    setTimeout(() => editor.layout(), 50);
+                }
+            }
+
+            function closeCodeModal() {
+                document.getElementById('codeModal').style.display = 'none';
+                currentReviewTaskId = null;
+            }
+
+            async function approveTask() {
+                if (!currentReviewTaskId) return;
+
+                try {
+                    const res = await fetch('/api/approve_task', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ task_id: currentReviewTaskId })
+                    });
+
+                    const data = await res.json();
+                    if (res.ok) {
+                        window.queueAppNotice(data.message || 'Task approved and marked as done!', { type: 'success' });
+                        closeCodeModal();
+                        window.location.reload();
+                    } else {
+                        window.appNotice(data.detail || 'Failed to approve task', { type: 'error' });
+                    }
+                } catch (e) {
+                    console.error(e);
+                    window.appNotice('Error approving task', { type: 'error' });
+                }
+            }
+
+            async function rejectTask() {
+                if (!currentReviewTaskId) return;
+
+                const comments = document.getElementById('reviewComments').value.trim();
+                if (!comments) {
+                    window.appNotice('Please provide comments when rejecting a task.', { type: 'warning' });
+                    return;
+                }
+
+                try {
+                    const res = await fetch('/api/reject_task', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ task_id: currentReviewTaskId, comments: comments })
+                    });
+
+                    const data = await res.json();
+                    if (res.ok) {
+                        window.queueAppNotice('Task rejected and reassigned to developer with your comments.', { type: 'success' });
+                        closeCodeModal();
+                        window.location.reload();
+                    } else {
+                        window.appNotice(data.detail || 'Failed to reject task', { type: 'error' });
+                    }
+                } catch (e) {
+                    console.error(e);
+                    window.appNotice('Error rejecting task', { type: 'error' });
+                }
+            }
+
+            async function approvePendingDeveloper(username) {
+                const confirmed = window.appConfirm
+                    ? await window.appConfirm({
+                        title: 'Approve developer?',
+                        message: `${username} will be able to sign in and will appear in assignment lists.`,
+                        confirmText: 'Approve developer',
+                        tone: 'success'
+                    })
+                    : window.confirm(`Approve ${username}?`);
+                if (!confirmed) return;
+
+                try {
+                    const response = await fetch(`/api/developers/${encodeURIComponent(username)}/approve`, { method: 'POST' });
+                    const data = await response.json().catch(() => ({}));
+                    if (!response.ok) {
+                        window.appNotice(data.detail || 'Failed to approve developer', { type: 'error' });
+                        return;
+                    }
+                    window.queueAppNotice(data.message || 'Developer approved.', { type: 'success' });
+                    window.location.reload();
+                } catch (error) {
+                    console.error(error);
+                    window.appNotice('Failed to approve developer', { type: 'error' });
+                }
+            }
+
+            async function rejectPendingDeveloper(username) {
+                const confirmed = window.appConfirm
+                    ? await window.appConfirm({
+                        title: 'Reject developer?',
+                        message: `${username} will be removed and will not be available for assignment.`,
+                        confirmText: 'Reject developer',
+                        tone: 'danger'
+                    })
+                    : window.confirm(`Reject ${username}?`);
+                if (!confirmed) return;
+
+                try {
+                    const response = await fetch(`/api/developers/${encodeURIComponent(username)}/reject`, { method: 'POST' });
+                    const data = await response.json().catch(() => ({}));
+                    if (!response.ok) {
+                        window.appNotice(data.detail || 'Failed to reject developer', { type: 'error' });
+                        return;
+                    }
+                    window.queueAppNotice(data.message || 'Developer rejected.', { type: 'success' });
+                    window.location.reload();
+                } catch (error) {
+                    console.error(error);
+                    window.appNotice('Failed to reject developer', { type: 'error' });
+                }
+            }
+
+            function escapePendingHtml(value) {
+                const div = document.createElement('div');
+                div.textContent = value == null ? '' : String(value);
+                return div.innerHTML;
+            }
+
+            function renderPendingDeveloperRequests(requests) {
+                const panel = document.getElementById('pendingRequestsPanel');
+                const list = document.getElementById('pendingRequestList');
+                const count = document.getElementById('pendingRequestCount');
+                const badge = document.getElementById('pendingRequestBadge');
+                if (!panel || !list || !count || !badge) return;
+
+                count.textContent = String(requests.length);
+                badge.textContent = `${requests.length} Pending`;
+                panel.hidden = requests.length === 0;
+
+                list.innerHTML = requests.map((dev) => `
+                    <article class="pending-request-card" data-pending-username="${escapePendingHtml(dev.username)}">
+                        <div class="pending-request-head">
+                            <div class="dev-avatar pending-request-avatar">${escapePendingHtml((dev.username || '?').charAt(0).toUpperCase())}</div>
+                            <div class="pending-request-copy">
+                                <h3 class="pending-request-name">${escapePendingHtml(dev.username)}</h3>
+                                <p class="pending-request-role">${escapePendingHtml((dev.role || '').replace(/_/g, ' '))}</p>
+                            </div>
+                        </div>
+                        <p class="pending-request-description">${escapePendingHtml(dev.description || 'No description provided.')}</p>
+                        <div class="pending-request-actions">
+                            <button type="button" class="approve-btn" data-username="${escapePendingHtml(dev.username)}" onclick="approvePendingDeveloper(this.dataset.username)">
+                                Approve
+                            </button>
+                            <button type="button" class="reject-btn" data-username="${escapePendingHtml(dev.username)}" onclick="rejectPendingDeveloper(this.dataset.username)">
+                                Reject
+                            </button>
+                        </div>
+                    </article>
+                `).join('');
+            }
+
+            async function refreshPendingDeveloperRequests(showNotificationForNew = true) {
+                try {
+                    const response = await fetch('/api/developers/pending_requests', { credentials: 'same-origin' });
+                    const data = await response.json().catch(() => ({}));
+                    if (!response.ok) {
+                        return;
+                    }
+                    const requests = Array.isArray(data.requests) ? data.requests : [];
+                    const previousUsernames = new Set(
+                        Array.from(document.querySelectorAll('[data-pending-username]'))
+                            .map((card) => card.dataset.pendingUsername)
+                            .filter(Boolean)
+                    );
+                    renderPendingDeveloperRequests(requests);
+
+                    if (showNotificationForNew && requests.length) {
+                        const newUsernames = requests
+                            .map((request) => request.username)
+                            .filter((username) => username && !previousUsernames.has(username));
+                        if (newUsernames.length) {
+                            const label = newUsernames.length === 1
+                                ? `${newUsernames[0]} requested developer access.`
+                                : `${newUsernames.length} new developer requests are waiting for review.`;
+                            window.appNotice(label, { type: 'info', duration: 4200 });
+                        }
+                    }
+                } catch (error) {
+                    console.error('Pending developer refresh failed:', error);
+                }
+            }
+
+            async function openTaskGitHubUrl(taskId) {
+                try {
+                    const response = await fetch(`/api/task_github_url/${taskId}`);
+                    const data = await response.json().catch(() => ({}));
+                    if (!response.ok) {
+                        window.appNotice(data.detail || 'Code not available on GitHub', { type: 'error' });
+                        return;
+                    }
+                    if (data.url) window.open(data.url, '_blank', 'noopener');
+                } catch (e) {
+                    console.error(e);
+                    window.appNotice('Error opening GitHub link', { type: 'error' });
+                }
+            }
+
+            async function pushCurrentTaskToGitHub() {
+                if (!currentReviewTaskId) {
+                    window.appNotice('Open a task first before pushing code to GitHub.', { type: 'warning' });
+                    return;
+                }
+
+                try {
+                    const response = await fetch(`/api/tasks/${currentReviewTaskId}/push_github`, { method: 'POST' });
+                    const data = await response.json().catch(() => ({}));
+                    if (!response.ok) {
+                        window.appNotice(data.detail || 'Failed to push code to GitHub', { type: 'error' });
+                        return;
+                    }
+                    window.queueAppNotice(data.message || 'Code pushed to GitHub.', { type: 'success' });
+                    if (data.url) {
+                        window.open(data.url, '_blank', 'noopener');
+                    }
+                } catch (error) {
+                    console.error(error);
+                    window.appNotice('Failed to push code to GitHub', { type: 'error' });
+                }
+            }
+
+            function openCurrentTaskGitHubUrl() {
+                if (!currentReviewTaskId) {
+                    window.appNotice('Open a task first before opening its GitHub link.', { type: 'warning' });
+                    return;
+                }
+                openTaskGitHubUrl(currentReviewTaskId);
+            }
+
+            function openLiveCodeView(taskId, title, taskType) {
+                currentLiveTaskId = taskId;
+                document.getElementById('liveModalTaskTitle').innerText = 'Live: ' + title;
+
+                document.getElementById('liveCodeModal').style.display = 'block';
+
+                // Determine language based on task type
+                var language = 'python'; // default
+                if (taskType === 'frontend') language = 'html';
+                if (taskType === 'backend') language = 'python';
+
+                // Initialize Monaco Editor for live view
+                if (!liveEditor) {
+                    require(['vs/editor/editor.main'], function () {
+                        liveEditor = monaco.editor.create(document.getElementById('live-monaco-editor-container'), {
+                            value: '// Connecting to live code view...\n// Waiting for code updates...',
+                            language: language,
+                            theme: 'vs-dark',
+                            readOnly: true,
+                            automaticLayout: true,
+                            minimap: { enabled: false },
+                            scrollBeyondLastLine: false,
+                            fontSize: 14
+                        });
+
+                        // Connect WebSocket for live updates
+                        connectManagerWebSocket(taskId);
+                    });
+                } else {
+                    var model = liveEditor.getModel();
+                    monaco.editor.setModelLanguage(model, language);
+                    model.setValue('// Connecting to live code view...\n// Waiting for code updates...');
+                    connectManagerWebSocket(taskId);
+                    setTimeout(() => liveEditor.layout(), 50);
+                }
+            }
+
+            function closeLiveCodeModal() {
+                document.getElementById('liveCodeModal').style.display = 'none';
+
+                // Close WebSocket connection
+                if (managerWebSocket) {
+                    managerWebSocket.close();
+                    managerWebSocket = null;
+                }
+
+                currentLiveTaskId = null;
+            }
+
+            function updateLiveStatusEnded() {
+                const indicator = document.getElementById('liveIndicator');
+                const badge = document.getElementById('liveStatusBadge');
+                if (indicator && badge) {
+                    indicator.textContent = '⚫';
+                    indicator.className = 'live-indicator ended';
+                    badge.textContent = 'LIVE ENDED';
+                    badge.className = 'live-status-badge ended';
+                }
+            }
+
+            function connectManagerWebSocket(taskId) {
+                // Close existing connection if any
+                if (managerWebSocket) {
+                    managerWebSocket.close();
+                }
+
+                const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+                const wsUrl = `${protocol}//${window.location.host}/ws/manager/${taskId}`;
+
+                managerWebSocket = new WebSocket(wsUrl);
+
+                managerWebSocket.onopen = function () {
+                    console.log('Manager WebSocket connected for live code viewing');
+                    const indicator = document.getElementById('liveIndicator');
+                    const badge = document.getElementById('liveStatusBadge');
+                    if (indicator) {
+                        indicator.textContent = '🔴';
+                        indicator.className = 'live-indicator';
+                    }
+                    if (badge) {
+                        badge.textContent = 'LIVE';
+                        badge.className = 'live-status-badge';
+                    }
+                };
+
+                managerWebSocket.onmessage = function (event) {
+                    const message = JSON.parse(event.data);
+
+                    if (message.type === 'code_update') {
+                        // Update editor with new code
+                        if (liveEditor && liveEditor.getModel()) {
+                            liveEditor.getModel().setValue(message.code || '');
+                        }
+                    } else if (message.type === 'developer_active') {
+                        // Developer is active
+                        console.log('Developer is actively coding');
+                    } else if (message.type === 'developer_disconnected') {
+                        // Developer disconnected - update status to ended
+                        console.log('Developer disconnected');
+                        updateLiveStatusEnded();
+                        if (liveEditor && liveEditor.getModel()) {
+                            const currentValue = liveEditor.getModel().getValue();
+                            if (!currentValue.includes('// Live view ended')) {
+                                liveEditor.getModel().setValue(currentValue + '\n\n// ⚫ Live view ended - Developer stopped or disconnected');
+                            }
+                        }
+                    }
+                };
+
+                managerWebSocket.onerror = function (error) {
+                    console.error('Manager WebSocket error:', error);
+                    updateLiveStatusEnded();
+                    if (liveEditor && liveEditor.getModel()) {
+                        liveEditor.getModel().setValue(liveEditor.getModel().getValue() + '\n\n// Error connecting to live code view. Connection ended.');
+                    }
+                };
+
+                managerWebSocket.onclose = function () {
+                    console.log('Manager WebSocket disconnected');
+                    updateLiveStatusEnded();
+                    if (liveEditor && liveEditor.getModel()) {
+                        const currentValue = liveEditor.getModel().getValue();
+                        // Add comment at the end indicating live view ended
+                        if (!currentValue.includes('// Live view ended')) {
+                            liveEditor.getModel().setValue(currentValue + '\n\n// ⚫ Live view ended - Developer stopped or disconnected');
+                        }
+                    }
+                };
+            }
+
+            window.onclick = function (event) {
+                if (event.target == document.getElementById('codeModal')) {
+                    closeCodeModal();
+                }
+                if (event.target == document.getElementById('liveCodeModal')) {
+                    closeLiveCodeModal();
+                }
+            }
+
+            document.getElementById('githubConfigForm').addEventListener('submit', saveGitHubConfig);
+            loadGitHubConfig();
+            refreshPendingDeveloperRequests(false);
+            window.setInterval(() => refreshPendingDeveloperRequests(true), 10000);
+        </script>
+    </div>
+
+    {% include 'chat_widget.html' %}
+
+</body>
+
+</html>
